@@ -1,0 +1,20 @@
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+
+# outputs
+build/
+out/
+*.epub
+!tests/fixtures/**/*.epub
+
+# local
+.DS_Store
+.nvim/
+.env
+node_modules/
