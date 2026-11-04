@@ -38,11 +38,11 @@ When porting a heuristic, find its entry in `prototype/README.md` ("What the fix
 
 ## Commands
 
-Not set up yet; issue 01 creates them. Expected:
-
 ```sh
 uv sync                      # install
 uv run pytest                # tests
 uv run ruff check . && uv run ruff format --check .
-uv run offprint convert tests/fixtures/frontiers-frai-2026-1748985/paper.pdf -o build/
+uv run offprint --version
 ```
+
+Ruff skips `prototype/` and `issues/`. `offprint convert INPUT [-o OUTDIR]` and `offprint preview EPUB` are stubs that exit 1 until #3, #5 and #7 land.
