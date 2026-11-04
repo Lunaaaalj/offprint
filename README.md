@@ -7,7 +7,7 @@ Turn research papers into clean, reflowable Kindle books, with figures, tables, 
 A two-column journal PDF is unreadable on a 6-inch e-ink screen. offprint rebuilds the paper's *structure* (sections, paragraphs, figures, tables, equations, references) and writes it as an EPUB that the Kindle can reflow, restyle and navigate.
 
 > **Status: early development.** A working prototype converted one real paper end to end (`prototype/`).
-> The package is scaffolded, but conversion isn't implemented yet. The roadmap is in [GitHub issues](../../issues) (drafts in [`issues/`](issues/)), and implementation happens with Claude Code, issue by issue.
+> The package is scaffolded, but conversion isn't implemented yet. The roadmap is in [GitHub issues](../../issues), and implementation happens with Claude Code, issue by issue.
 
 ![Prototype output on a Kindle-sized screen](docs/kindle-preview.png)
 
@@ -90,7 +90,7 @@ Not in the main conversion path, which is deterministic code: fast, cheap and re
 | **M2: Better sources** | source resolver · JATS adapter · arXiv LaTeX adapter · equation rendering |
 | **M3: Automation** | Send-to-Kindle delivery · Zotero integration · CLI JSON interface for ibid.nvim · ML fallback adapter · review queue & AI repair loop |
 
-The issue drafts live in [`issues/`](issues/), mirrored as GitHub issues.
+Each item is a [GitHub issue](../../issues).
 
 ## Planned usage
 
@@ -110,7 +110,6 @@ offprint/
 ├── CLAUDE.md             guidance for Claude Code
 ├── pyproject.toml        package metadata and tool config
 ├── src/offprint/         the package: CLI, IR, adapters, cleanup, renderers, QA, preview, cover, profiles
-├── issues/               issue drafts (mirrored to GitHub issues)
 ├── prototype/            the throwaway scripts behind the first EPUB, plus a catalogue of failures
 ├── tests/fixtures/       real papers with expected counts (CC BY only)
 └── docs/                 images and design notes
@@ -120,7 +119,7 @@ offprint/
 
 - Python ≥ 3.12, managed with `uv`. Tests with `pytest`, lint and format with `ruff`.
 - Main dependencies: PyMuPDF (PDF), lxml (JATS/XHTML), Playwright + Chromium (previews and cover), Pillow.
-- External tools: `epubcheck` (QA). pandoc only if an adapter needs it; the EPUB writer itself shouldn't depend on it (see issue 05).
+- External tools: `epubcheck` (QA). pandoc only if an adapter needs it; the EPUB writer itself shouldn't depend on it (see #5).
 - Workflow: issue-driven, one branch and one PR per issue, [Conventional Commits](https://www.conventionalcommits.org/), protected `main`.
 
 ### Commands
@@ -132,7 +131,7 @@ uv run ruff check . && uv run ruff format --check .
 uv run offprint --version
 ```
 
-`offprint convert` and `offprint preview` exist but exit with a "not implemented" message until issues 03, 05 and 07 land.
+`offprint convert` and `offprint preview` exist but exit with a "not implemented" message until #3, #5 and #7 land.
 
 ## Fixtures and licensing
 

@@ -24,8 +24,8 @@ addopts = ["-ra", "--strict-markers", "--strict-config"]
 
 [tool.ruff]
 line-length = 100
-# prototype/ is a frozen reference and issues/publish.py a one-off script (see CLAUDE.md).
-extend-exclude = ["prototype", "issues"]
+# prototype/ is a frozen reference (see CLAUDE.md).
+extend-exclude = ["prototype"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B"]
