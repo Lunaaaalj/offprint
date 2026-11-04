@@ -32,6 +32,7 @@ select = ["E", "F", "W", "I", "UP", "B"]
 
 [dependency-groups]
 dev = [
+    "hypothesis>=6.170.14",
     "pytest>=9.2.0",
     "ruff>=0.17.3",
 ]
