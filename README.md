@@ -44,19 +44,19 @@ Every adapter writes the same intermediate representation. Only the renderer kno
 Document
 ├── meta: title, authors[], journal, year, doi, arxiv_id, license, abstract, keywords[]
 ├── blocks: [
-│     Heading(level, text, number?)
-│     Paragraph(runs: [Text | Italic | Bold | Sup | Sub | Link | Cite])
-│     ListItem(runs, ordered?)
-│     Equation(number?, latex?, image?, alt)
-│     Figure(number, image, caption_runs, alt?)
-│     Table(number, caption_runs, header: [cell], rows: [[cell]], continued_from?)
-│     Reference(key?, runs, doi?)
+│     Heading(level, runs, number?)
+│     Paragraph(runs: [Text | Italic | Bold | Sup | Sub | Link | Cite | MathInline], role?)
+│     ListItem(runs, ordered?, depth?)
+│     Equation(alt, number?, latex?, asset?)
+│     Figure(number, asset, caption, alt?)
+│     Table(number, caption, header: [cell], rows: [[cell]], notes?)
+│     Reference(runs, key?, doi?)
 │   ]
 ├── assets: {id → bytes + mime}
 └── provenance: per block → (adapter, page, bbox) for debugging and QA
 ```
 
-The same IR can later feed other outputs (an Obsidian note, a Markdown summary). EPUB is just the first renderer.
+[`docs/ir.md`](docs/ir.md) explains each block type. The same IR can later feed other outputs (an Obsidian note, a Markdown summary). EPUB is just the first renderer.
 
 ### 3. Profiles are config, cleanup steps are code
 
