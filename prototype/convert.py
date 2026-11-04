@@ -2,7 +2,7 @@
 
 PROTOTYPE. This is the throwaway script that produced the first EPUB. It mixes
 layout heuristics for the Frontiers template with generic cleanup steps.
-offprint's job is to pull these apart (see ../README.md and issues/).
+offprint's job is to pull these apart (see ../README.md and the GitHub issues).
 
 usage: python -I convert.py paper.pdf OUTDIR   ->  OUTDIR/book.html + OUTDIR/img/
 """

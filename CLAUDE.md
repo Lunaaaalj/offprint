@@ -8,10 +8,10 @@ offprint converts research papers (PDF, JATS XML, arXiv LaTeX) into reflowable E
 
 ## How work happens here
 
-- **Issue-driven.** The roadmap is GitHub issues (`gh issue list`), drafted in `issues/NN-*.md`. Work on one issue at a time and check its acceptance criteria and "Out of scope" list. Out-of-scope ideas become new issues, not scope creep.
+- **Issue-driven.** The roadmap is GitHub issues (`gh issue list`). Work on one issue at a time and check its acceptance criteria and "Out of scope" list. Out-of-scope ideas become new issues, not scope creep.
 - **One branch and one PR per issue.** Name the branch `NN-short-slug`. `main` is protected.
 - **Conventional Commits** (`feat:`, `fix:`, `test:`, `refactor:`, `docs:`, `chore:`), referencing the issue (`Closes #N`).
-- Keep `issues/NN-*.md` and the GitHub issue in sync if the scope changes.
+- Update the GitHub issue if the scope changes.
 
 ## Design rules (don't break these without discussing first)
 
@@ -45,4 +45,4 @@ uv run ruff check . && uv run ruff format --check .
 uv run offprint --version
 ```
 
-Ruff skips `prototype/` and `issues/`. `offprint convert INPUT [-o OUTDIR]` and `offprint preview EPUB` are stubs that exit 1 until #3, #5 and #7 land.
+Ruff skips `prototype/`. `offprint convert INPUT [-o OUTDIR]` and `offprint preview EPUB` are stubs that exit 1 until #3, #5 and #7 land.
