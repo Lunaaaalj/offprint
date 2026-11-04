@@ -6,8 +6,8 @@ Turn research papers into clean, reflowable Kindle books, with figures, tables, 
 
 A two-column journal PDF is unreadable on a 6-inch e-ink screen. offprint rebuilds the paper's *structure* (sections, paragraphs, figures, tables, equations, references) and writes it as an EPUB that the Kindle can reflow, restyle and navigate.
 
-> **Status: design phase.** A working prototype converted one real paper end to end (`prototype/`).
-> The package doesn't exist yet. The roadmap is in [GitHub issues](../../issues) (drafts in [`issues/`](issues/)), and implementation happens with Claude Code, issue by issue.
+> **Status: early development.** A working prototype converted one real paper end to end (`prototype/`).
+> The package is scaffolded, but conversion isn't implemented yet. The roadmap is in [GitHub issues](../../issues) (drafts in [`issues/`](issues/)), and implementation happens with Claude Code, issue by issue.
 
 ![Prototype output on a Kindle-sized screen](docs/kindle-preview.png)
 
@@ -108,13 +108,13 @@ offprint watch --zotero-collection "→ Kindle"
 offprint/
 ├── README.md             this file
 ├── CLAUDE.md             guidance for Claude Code
+├── pyproject.toml        package metadata and tool config
+├── src/offprint/         the package: CLI, IR, adapters, cleanup, renderers, QA, preview, cover, profiles
 ├── issues/               issue drafts (mirrored to GitHub issues)
 ├── prototype/            the throwaway scripts behind the first EPUB, plus a catalogue of failures
 ├── tests/fixtures/       real papers with expected counts (CC BY only)
 └── docs/                 images and design notes
 ```
-
-The package itself (`src/offprint/`, `pyproject.toml`) arrives with issue 01.
 
 ## Development
 
@@ -122,6 +122,17 @@ The package itself (`src/offprint/`, `pyproject.toml`) arrives with issue 01.
 - Main dependencies: PyMuPDF (PDF), lxml (JATS/XHTML), Playwright + Chromium (previews and cover), Pillow.
 - External tools: `epubcheck` (QA). pandoc only if an adapter needs it; the EPUB writer itself shouldn't depend on it (see issue 05).
 - Workflow: issue-driven, one branch and one PR per issue, [Conventional Commits](https://www.conventionalcommits.org/), protected `main`.
+
+### Commands
+
+```sh
+uv sync                      # install
+uv run pytest                # tests
+uv run ruff check . && uv run ruff format --check .
+uv run offprint --version
+```
+
+`offprint convert` and `offprint preview` exist but exit with a "not implemented" message until issues 03, 05 and 07 land.
 
 ## Fixtures and licensing
 
