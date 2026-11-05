@@ -6,8 +6,8 @@ Turn research papers into clean, reflowable Kindle books, with figures, tables, 
 
 A two-column journal PDF is unreadable on a 6-inch e-ink screen. offprint rebuilds the paper's *structure* (sections, paragraphs, figures, tables, equations, references) and writes it as an EPUB that the Kindle can reflow, restyle and navigate.
 
-> **Status: early development.** A working prototype converted one real paper end to end (`prototype/`).
-> The package is scaffolded, but conversion isn't implemented yet. The roadmap is in [GitHub issues](../../issues), and implementation happens with Claude Code, issue by issue.
+> **Status: early development.** `offprint convert` turns a PDF from a supported publisher template into an EPUB with a cover. The QA gate, the JATS and LaTeX adapters and delivery are still to come.
+> The roadmap is in [GitHub issues](../../issues), and implementation happens with Claude Code, issue by issue.
 
 ![Prototype output on a Kindle-sized screen](docs/kindle-preview.png)
 
@@ -92,11 +92,44 @@ Not in the main conversion path, which is deterministic code: fast, cheap and re
 
 Each item is a [GitHub issue](../../issues).
 
-## Planned usage
+## Usage
 
 ```sh
-offprint convert paper.pdf                 # → paper.epub (+ QA report)
-offprint convert 10.3389/frai.2026.1748985 # DOI or arXiv id: resolver picks the best source
+offprint convert paper.pdf -o build/       # → build/paper.epub
+offprint resolve 10.3389/frai.2026.1748985 # find the best source and cache it
+offprint convert 10.3389/frai.2026.1748985 # → 10.3389_frai.2026.1748985.epub, from the cache
+```
+
+`convert` never uses the network. INPUT is a local PDF, or a DOI or arXiv id that `resolve` has already cached; an uncached identifier fails and tells you to run `resolve`. If the best cached source is LaTeX or JATS, `convert` fails and names the missing adapter (#11, #10) rather than quietly using a worse source.
+
+| `convert` option | Effect |
+|---|---|
+| `-o`, `--output OUTDIR` | Where to write the book (default: the current directory). The file is `<input stem or identifier>.epub`. |
+| `--no-cover` | Skip the cover. Without it, a cover that can't be made (Chromium is missing, or the layout checks fail) stops the conversion. |
+| `--emit-ir` | Write `<stem>.ir.json` and `<stem>.assets/` instead of an EPUB. Takes local PDFs only. |
+
+`convert` prints the EPUB's path on stdout, and anything the renderer had to change (`epub.*` codes) on stderr.
+
+When the resolver has metadata for the paper, it's combined with what the adapter extracted. The other side always fills a gap:
+
+| Wins | Fields | Why |
+|---|---|---|
+| Resolver | title, journal, year, volume, article id, DOI, arXiv id | A registry curates these. |
+| Adapter | authors, abstract, license, keywords, source tier | The paper has more: affiliations, inline markup, the license holder. |
+
+`offprint resolve ID` accepts a DOI, an arXiv id or URL, or a local file, and explains which source it chose in each tier. `--refresh` ignores the cache. It reads these settings:
+
+| Setting | Meaning |
+|---|---|
+| `OFFPRINT_CONTACT_EMAIL` | The contact address for Unpaywall, which is skipped without one. No default. Can also be `contact_email` in the config file. |
+| `OFFPRINT_CONFIG_FILE` | The config file (default: `~/.config/offprint/config.toml`). |
+| `OFFPRINT_CACHE_DIR` | The cache (default: `~/.cache/offprint/`). `convert` reads it too. |
+
+The cover needs Chromium: `uv run playwright install chromium`.
+
+Planned:
+
+```sh
 offprint convert 2401.01234 --send         # convert and email to your Kindle
 offprint preview paper.epub                # Kindle-sized screenshots
 offprint watch --zotero-collection "→ Kindle"
@@ -131,7 +164,7 @@ uv run ruff check . && uv run ruff format --check .
 uv run offprint --version
 ```
 
-`offprint convert` and `offprint preview` exist but exit with a "not implemented" message until #3, #5 and #7 land.
+`offprint preview` exists but exits with a "not implemented" message until #7 lands.
 
 ## Fixtures and licensing
 
