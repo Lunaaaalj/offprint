@@ -11,6 +11,22 @@ but had to change is logged and returned in `EpubResult.problems`, with one of t
 | `epub.asset_converted` | An image that isn't PNG or JPEG was converted to PNG. |
 """
 
-from offprint.render.epub.renderer import EpubOptions, EpubRenderError, EpubResult, render_epub
+from offprint.render.epub.renderer import (
+    FRONT_MATTER_LOCATION,
+    BookLocation,
+    EpubOptions,
+    EpubRenderError,
+    EpubResult,
+    block_locations,
+    render_epub,
+)
 
-__all__ = ["EpubOptions", "EpubRenderError", "EpubResult", "render_epub"]
+__all__ = [
+    "FRONT_MATTER_LOCATION",
+    "BookLocation",
+    "EpubOptions",
+    "EpubRenderError",
+    "EpubResult",
+    "block_locations",
+    "render_epub",
+]
