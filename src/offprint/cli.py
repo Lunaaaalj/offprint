@@ -27,17 +27,31 @@ def _not_implemented(command: str, issues: str) -> NoReturn:
 
 def _emit_ir(source: Path, outdir: Path) -> None:
     # Imported here so that `--version` and `--help` don't pay for loading PyMuPDF.
-    from offprint.adapters.pdf import LayoutError, NoProfileMatch, emit_ir
+    from offprint.adapters.pdf import LayoutError, NoProfileMatch, UnreadablePdfError, emit_ir
 
     if not source.is_file():
         typer.echo(f"offprint convert: no such file: {source}", err=True)
         raise typer.Exit(code=1)
     try:
         target = emit_ir(source, outdir)
-    except (LayoutError, NoProfileMatch) as error:
+    except (LayoutError, NoProfileMatch, UnreadablePdfError) as error:
         typer.echo(f"offprint convert: {error}", err=True)
         raise typer.Exit(code=1) from error
     typer.echo(target)
+
+
+def _write_epub(source: str, outdir: Path, cover: bool) -> None:
+    # Imported here so that `--version` and `--help` don't pay for PyMuPDF and Playwright.
+    from offprint.pipeline import ConvertError, convert_to_epub
+
+    try:
+        result = convert_to_epub(source, outdir, cover=cover)
+    except ConvertError as error:
+        typer.echo(f"offprint convert: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(result.path)
+    for problem in result.problems:
+        typer.echo(f"{problem.code}: {problem.message}", err=True)
 
 
 @app.callback()
@@ -57,20 +71,27 @@ def main(
 
 @app.command()
 def convert(
-    # A string, not a Path: the resolver (#9) will also accept DOIs and arXiv ids here.
-    source: Annotated[str, typer.Argument(metavar="INPUT", help="The paper to convert.")],
+    # A string, not a Path: this can also be a DOI or an arXiv id.
+    source: Annotated[
+        str,
+        typer.Argument(
+            metavar="INPUT",
+            help="A local PDF, or a DOI or arXiv id that `offprint resolve` has cached.",
+        ),
+    ],
     outdir: Annotated[
         Path, typer.Option("--output", "-o", metavar="OUTDIR", help="Where to write the EPUB.")
     ] = Path("."),
     emit_ir: Annotated[
         bool, typer.Option("--emit-ir", help="Write the IR as JSON instead of an EPUB.")
     ] = False,
+    no_cover: Annotated[bool, typer.Option("--no-cover", help="Don't generate a cover.")] = False,
 ) -> None:
-    """Convert a paper into an EPUB."""
+    """Convert a paper into an EPUB. Never uses the network."""
     if emit_ir:
         _emit_ir(Path(source), outdir)
         return
-    _not_implemented("convert", "#3 and #5")
+    _write_epub(source, outdir, cover=not no_cover)
 
 
 @app.command()

@@ -32,8 +32,15 @@ class PageData:
     """Alt-text of the page's figures, in the order the page draws them."""
 
 
+class UnreadablePdfError(ValueError):
+    """The file isn't a PDF that can be opened."""
+
+
 def open_pdf(path: Path) -> pymupdf.Document:
-    return pymupdf.open(path)
+    try:
+        return pymupdf.open(path, filetype="pdf")
+    except pymupdf.FileDataError as error:
+        raise UnreadablePdfError(f"can't read {path} as a PDF: {error}") from error
 
 
 def document_facts(doc: pymupdf.Document) -> DocumentFacts:

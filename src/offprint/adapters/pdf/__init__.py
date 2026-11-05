@@ -9,6 +9,7 @@ from pathlib import Path
 
 from offprint.adapters.pdf.assemble import LayoutError, assemble
 from offprint.adapters.pdf.extract import (
+    UnreadablePdfError,
     citation_metadata,
     crop,
     document_facts,
@@ -47,4 +48,4 @@ def emit_ir(path: Path, outdir: Path) -> Path:
     return target
 
 
-__all__ = ["LayoutError", "NoProfileMatch", "convert_pdf", "emit_ir"]
+__all__ = ["LayoutError", "NoProfileMatch", "UnreadablePdfError", "convert_pdf", "emit_ir"]
