@@ -6,7 +6,7 @@ Turn research papers into clean, reflowable Kindle books, with figures, tables, 
 
 A two-column journal PDF is unreadable on a 6-inch e-ink screen. offprint rebuilds the paper's *structure* (sections, paragraphs, figures, tables, equations, references) and writes it as an EPUB that the Kindle can reflow, restyle and navigate.
 
-> **Status: early development.** `offprint convert` turns a PDF from a supported publisher template into an EPUB with a cover. The QA gate, the JATS and LaTeX adapters and delivery are still to come.
+> **Status: early development.** `offprint convert` turns a PDF from a supported publisher template into an EPUB with a cover, and checks the result. The JATS and LaTeX adapters and delivery are still to come.
 > The roadmap is in [GitHub issues](../../issues), and implementation happens with Claude Code, issue by issue.
 
 ![Prototype output on a Kindle-sized screen](docs/kindle-preview.png)
@@ -76,7 +76,7 @@ Every conversion gets a machine-readable report and a score. A failing paper goe
 - **validity**: every chapter is well-formed XHTML, and the book passes `epubcheck`
 - **preview**: Kindle-sized page renders for a quick look
 
-Any failure fixed by hand also adds a check for it, so the gate gets stricter over time.
+Any failure fixed by hand also adds a check for it, so the gate gets stricter over time. [`docs/qa.md`](docs/qa.md) lists every check and the format of the report.
 
 ### 5. Where AI fits
 
@@ -107,8 +107,9 @@ offprint convert 10.3389/frai.2026.1748985 # → 10.3389_frai.2026.1748985.epub,
 | `-o`, `--output OUTDIR` | Where to write the book (default: the current directory). The file is `<input stem or identifier>.epub`. |
 | `--no-cover` | Skip the cover. Without it, a cover that can't be made (Chromium is missing, or the layout checks fail) stops the conversion. |
 | `--emit-ir` | Write `<stem>.ir.json` and `<stem>.assets/` instead of an EPUB. Takes local PDFs only. |
+| `--allow-review` | Exit 0 even if the QA verdict is `review`. |
 
-`convert` prints the EPUB's path on stdout, and anything the renderer had to change (`epub.*` codes) on stderr.
+`convert` prints the EPUB's path on stdout and a QA summary on stderr, and writes `<stem>.qa.json` and `<stem>.qa.md` next to the book. If the verdict is `review`, it exits 3 and the book is still there to look at. See [`docs/qa.md`](docs/qa.md).
 
 When the resolver has metadata for the paper, it's combined with what the adapter extracted. The other side always fills a gap:
 
@@ -152,7 +153,7 @@ offprint/
 
 - Python ≥ 3.12, managed with `uv`. Tests with `pytest`, lint and format with `ruff`.
 - Main dependencies: PyMuPDF (PDF), lxml (JATS/XHTML), Playwright + Chromium (previews and cover), Pillow.
-- External tools: `epubcheck` (QA). pandoc only if an adapter needs it; the EPUB writer itself shouldn't depend on it (see #5).
+- External tools: `epubcheck` (QA, skipped with a warning when it isn't installed). pandoc only if an adapter needs it; the EPUB writer itself shouldn't depend on it (see #5).
 - Workflow: issue-driven, one branch and one PR per issue, [Conventional Commits](https://www.conventionalcommits.org/), protected `main`.
 
 ### Commands

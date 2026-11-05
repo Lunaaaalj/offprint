@@ -14,6 +14,10 @@ app = typer.Typer(
 )
 
 
+# 1 means no book, 2 is a usage error, and this means the book exists but needs a human.
+_REVIEW_EXIT_CODE = 3
+
+
 def _show_version(value: bool) -> None:
     if value:
         typer.echo(f"offprint {__version__}")
@@ -40,9 +44,10 @@ def _emit_ir(source: Path, outdir: Path) -> None:
     typer.echo(target)
 
 
-def _write_epub(source: str, outdir: Path, cover: bool) -> None:
+def _write_epub(source: str, outdir: Path, cover: bool, allow_review: bool) -> None:
     # Imported here so that `--version` and `--help` don't pay for PyMuPDF and Playwright.
     from offprint.pipeline import ConvertError, convert_to_epub
+    from offprint.qa import summary
 
     try:
         result = convert_to_epub(source, outdir, cover=cover)
@@ -50,8 +55,9 @@ def _write_epub(source: str, outdir: Path, cover: bool) -> None:
         typer.echo(f"offprint convert: {error}", err=True)
         raise typer.Exit(code=1) from error
     typer.echo(result.path)
-    for problem in result.problems:
-        typer.echo(f"{problem.code}: {problem.message}", err=True)
+    typer.echo(summary(result.report, result.report_path), err=True)
+    if result.report.verdict == "review" and not allow_review:
+        raise typer.Exit(code=_REVIEW_EXIT_CODE)
 
 
 @app.callback()
@@ -86,12 +92,18 @@ def convert(
         bool, typer.Option("--emit-ir", help="Write the IR as JSON instead of an EPUB.")
     ] = False,
     no_cover: Annotated[bool, typer.Option("--no-cover", help="Don't generate a cover.")] = False,
+    allow_review: Annotated[
+        bool, typer.Option("--allow-review", help="Exit 0 even if the QA verdict is review.")
+    ] = False,
 ) -> None:
-    """Convert a paper into an EPUB. Never uses the network."""
+    """Convert a paper into an EPUB and check it. Never uses the network.
+
+    Exits 1 if no book could be made and 3 if the book needs review (see `<name>.qa.md`).
+    """
     if emit_ir:
         _emit_ir(Path(source), outdir)
         return
-    _write_epub(source, outdir, cover=not no_cover)
+    _write_epub(source, outdir, cover=not no_cover, allow_review=allow_review)
 
 
 @app.command()
