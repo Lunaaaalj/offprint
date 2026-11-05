@@ -1,7 +1,7 @@
 """Command-line interface: parses arguments and hands off to the pipeline stages."""
 
 from pathlib import Path
-from typing import Annotated, NoReturn
+from typing import Annotated
 
 import typer
 
@@ -22,11 +22,6 @@ def _show_version(value: bool) -> None:
     if value:
         typer.echo(f"offprint {__version__}")
         raise typer.Exit()
-
-
-def _not_implemented(command: str, issues: str) -> NoReturn:
-    typer.echo(f"offprint {command}: not implemented yet (see {issues}).", err=True)
-    raise typer.Exit(code=1)
 
 
 def _emit_ir(source: Path, outdir: Path) -> None:
@@ -109,9 +104,57 @@ def convert(
 @app.command()
 def preview(
     epub: Annotated[Path, typer.Argument(metavar="EPUB", help="The EPUB to preview.")],
+    outdir: Annotated[
+        Path | None,
+        typer.Option(
+            "--output", "-o", metavar="OUTDIR", help="Where to write the pages [<stem>.preview]."
+        ),
+    ] = None,
+    pages: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--pages",
+            metavar="CHAPTER:PAGE",
+            help="Render this page instead of the automatic selection. Can be repeated.",
+        ),
+    ] = None,
+    report: Annotated[
+        Path | None,
+        typer.Option("--qa", metavar="QA_JSON", help="The QA report [<stem>.qa.json, if any]."),
+    ] = None,
+    bezel: Annotated[bool, typer.Option("--bezel", help="Draw a device around each page.")] = False,
+    grayscale: Annotated[
+        bool, typer.Option("--grayscale", help="Give each page an e-ink look.")
+    ] = False,
 ) -> None:
-    """Render Kindle-sized page previews of an EPUB."""
-    _not_implemented("preview", "#7")
+    """Render Kindle-sized pages of an EPUB to PNGs, plus a contact sheet.
+
+    By default: the first page, the first page with a figure, an equation and a table, and every
+    page a QA check flagged.
+    """
+    # Imported here so that `--version` and `--help` don't pay for Playwright.
+    from offprint.browser import BrowserUnavailableError
+    from offprint.preview import PreviewError, PreviewOptions, link_report, preview_epub
+
+    if not epub.is_file():
+        typer.echo(f"offprint preview: no such file: {epub}", err=True)
+        raise typer.Exit(code=1)
+    options = PreviewOptions(
+        pages=tuple(pages or ()), report=report, bezel=bezel, grayscale=grayscale
+    )
+    try:
+        result = preview_epub(epub, outdir, options)
+    except (PreviewError, BrowserUnavailableError, OSError) as error:
+        typer.echo(f"offprint preview: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    for page in result.pages:
+        typer.echo(page.image)
+    typer.echo(result.contact_sheet)
+    linked = link_report(result)
+    if linked is not None:
+        typer.echo(f"Linked from {linked}", err=True)
+    if result.unplaced:
+        typer.echo(f"{result.unplaced} findings have no page in the book.", err=True)
 
 
 @app.command()

@@ -1,0 +1,16 @@
+# The screen previews imitate: a Kindle Paperwhite 6.8", in CSS pixels.
+width: 412
+height: 549
+scale: 3 # 1236x1647 device pixels.
+margin: 22 # Left and right. Also the gap between pages.
+top_bar: 30
+bottom_bar: 30
+font_size: 15.5
+image_room: 60 # How far an image stays from the full text height, so its caption can share a page.
+clock: "1:52" # The time on the status bar. A fixed one keeps renders reproducible.
+
+contact_sheet:
+  columns: 4
+  thumbnail_width: 412
+  label_height: 52
+  padding: 16
