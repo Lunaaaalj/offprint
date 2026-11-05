@@ -6,7 +6,7 @@ Importing this package fills the registry, so `registered()` lists every step.
 from offprint.cleanup.captions import CaptionOptions, merge_touching_blocks, regroup_lines
 from offprint.cleanup.paragraphs import ParagraphOptions, join_paragraphs
 from offprint.cleanup.registry import CleanupStep, registered, step
-from offprint.cleanup.runs import join_runs, plain_text
+from offprint.cleanup.runs import drop_prefix, join_runs, plain_text
 from offprint.cleanup.tables import (
     TableOptions,
     cell_lines,
@@ -45,6 +45,7 @@ __all__ = [
     "clean_text",
     "collapse_whitespace",
     "dehyphenate",
+    "drop_prefix",
     "expand_ligatures",
     "fill_cells_from_spans",
     "fix_combining_marks",

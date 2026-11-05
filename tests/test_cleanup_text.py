@@ -151,6 +151,12 @@ def test_vocabulary_closes_up_a_word_it_knows_whole() -> None:
     assert not keep("in", "formation")
 
 
+def test_vocabulary_prefers_the_closed_up_form_when_it_saw_both() -> None:
+    keep = keep_hyphen_from_vocabulary(["multi-modal", "multimodal"])
+
+    assert not keep("multi", "modal")
+
+
 def test_vocabulary_closes_up_when_a_side_is_not_a_word() -> None:
     keep = keep_hyphen_from_vocabulary(["classification", "of"])
 
