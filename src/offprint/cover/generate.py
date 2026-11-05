@@ -24,6 +24,7 @@ from offprint.cover.text import (
 from offprint.ir import Document, Problem
 
 ASSETS = files("offprint.cover") / "assets"
+_FONT_FACE = re.compile(r"^@font-face \{.*\}$", re.MULTILINE)
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +58,11 @@ def _inline_fonts(css: str) -> str:
         return f"url(data:font/woff2;base64,{font})"
 
     return re.sub(r"url\((fonts/[^)]+)\)", embed, css)
+
+
+def font_faces() -> str:
+    """Return the bundled Literata as self-contained `@font-face` rules, for any page to use."""
+    return _inline_fonts("\n".join(_FONT_FACE.findall((ASSETS / "cover.css").read_text())))
 
 
 def _hero_html(hero: Hero | None) -> str:
