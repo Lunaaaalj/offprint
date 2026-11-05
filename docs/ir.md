@@ -13,7 +13,7 @@ Every block has an `id`, unique in the document, and `Document.provenance[id]` s
 | `Heading(level, runs, number?)` | Section titles | `level` starts at 1. `number` is the label from the source ("2.1"), not part of `runs`. |
 | `Paragraph(runs, role?)` | Running text | `role`: `body` (default), `abstract`, `small` (footnote-size text such as credits) or `meta` (front matter such as a citation line). |
 | `ListItem(runs, ordered?, depth?)` | One list entry | Consecutive items form a list. `depth` starts at 0. |
-| `Equation(alt, number?, latex?, asset?)` | Display math | Needs `latex`, an image `asset` or both. PDF adapters crop an image and put the extracted text in `alt`. LaTeX and JATS adapters set `latex`. |
+| `Equation(alt, number?, latex?, asset?)` | Display math | Needs `latex`, an image `asset` or both. PDF adapters crop an image and put the extracted text in `alt`. LaTeX and JATS adapters set `latex`, and [the equation stage](equations.md) adds the `asset`. |
 | `Figure(number, asset, caption, alt?)` | A captioned image | `alt` holds recovered alt-text, such as the PDF's ActualText. |
 | `Table(number, caption, header, rows, notes?)` | Real tabular data | Every row has as many cells as `header`. Expand spanning cells when mapping a source. A table that can't be represented cell by cell should become a `Figure`. |
 | `Reference(runs, key?, doi?)` | One bibliography entry | `key` is what `Cite.target` points to, when the source has one. |
@@ -24,12 +24,12 @@ Numbers are strings, because papers have "S1", "A.2" and "12a".
 
 ## Runs
 
-Inline content is a tuple of runs. `Italic`, `Bold`, `Sup`, `Sub`, `Link(href, runs)` and `Cite(target, runs)` hold more runs, so they nest (italic inside a link). `Text(text)` and `MathInline(text, latex?)` are the leaves. Table cells are also tuples of runs.
+Inline content is a tuple of runs. `Italic`, `Bold`, `Sup`, `Sub`, `Link(href, runs)` and `Cite(target, runs)` hold more runs, so they nest (italic inside a link). `Text(text)` and `MathInline(text, latex?, asset?)` are the leaves. Adapters don't set `asset`: that's the equation stage. Table cells are also tuples of runs.
 
 ## Meta, assets and provenance
 
 - `Meta` holds the bibliographic data. `source_tier` is `latex`, `jats`, `pdf` or `ml`, and `license` has an SPDX id and a holder.
-- `Document.assets` maps an id to an `Asset(id, mime, bytes, width?, height?)`. The key must equal `asset.id`. Blocks refer to assets by id.
+- `Document.assets` maps an id to an `Asset(id, mime, bytes, width?, height?, box?)`. The key must equal `asset.id`. Blocks refer to assets by id. A rendered formula has a `box`, a `MathBox(width, height, depth)` in em, where `depth` is how far it reaches below the text baseline.
 - `Provenance(adapter, page?, bbox?, note?)` lets a QA report point at the exact place in the source. `page` is 1-based.
 
 ## Saving to JSON

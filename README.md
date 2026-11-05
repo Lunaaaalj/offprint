@@ -82,6 +82,10 @@ Any failure fixed by hand also adds a check for it, so the gate gets stricter ov
 
 Not in the main conversion path, which is deterministic code: fast, cheap and reproducible. AI is the **repair loop**: when the gate fails, an agent gets the QA report and renders of the problem pages, proposes a profile change or a new cleanup step, and runs the tests. A human approves the change as a PR.
 
+### 6. Equations are images, made once
+
+Kindle's MathML support is inconsistent, so LaTeX becomes a PNG with the LaTeX as `alt` text, or plain text when it's as simple as `x_i`. A separate stage does this between the adapter and the renderer, using a vendored MathJax in the Chromium the cover already needs. [`docs/equations.md`](docs/equations.md) has the comparison behind that choice.
+
 ## Roadmap
 
 | Milestone | Issues |
@@ -111,7 +115,7 @@ offprint preview build/paper.epub          # → Kindle-sized PNGs in build/pape
 | `--emit-ir` | Write `<stem>.ir.json` and `<stem>.assets/` instead of an EPUB. Takes local PDFs only. |
 | `--allow-review` | Exit 0 even if the QA verdict is `review`. |
 
-`convert` prints the EPUB's path on stdout and a QA summary on stderr, and writes `<stem>.qa.json` and `<stem>.qa.md` next to the book. If the verdict is `review`, it exits 3 and the book is still there to look at. See [`docs/qa.md`](docs/qa.md). Anything the adapter couldn't map (`jats.*` codes) or the renderer had to change (`epub.*` codes) is on stderr and in the report.
+`convert` prints the EPUB's path on stdout and a QA summary on stderr, and writes `<stem>.qa.json` and `<stem>.qa.md` next to the book. If the verdict is `review`, it exits 3 and the book is still there to look at. See [`docs/qa.md`](docs/qa.md). Anything the adapter couldn't map (`jats.*` codes), or the equation stage or the renderer had to change (`math.*` and `epub.*` codes), is on stderr and in the report.
 
 `resolve` also downloads a JATS article's figures, from NCBI's [PMC Open Access dataset](https://pmc.ncbi.nlm.nih.gov/tools/pmcaws/), into the cache. Its report says how many arrived. A figure that's missing stops `convert` with `jats.graphic_missing`, because a book must not lose a figure quietly. A publisher's own XML has no such dataset behind it, so its figures can't be fetched yet.
 
@@ -141,9 +145,9 @@ When the resolver has metadata for the paper, it's combined with what the adapte
 |---|---|
 | `OFFPRINT_CONTACT_EMAIL` | The contact address for Unpaywall, which is skipped without one. No default. Can also be `contact_email` in the config file. |
 | `OFFPRINT_CONFIG_FILE` | The config file (default: `~/.config/offprint/config.toml`). |
-| `OFFPRINT_CACHE_DIR` | The cache (default: `~/.cache/offprint/`). `convert` reads it too. |
+| `OFFPRINT_CACHE_DIR` | The cache (default: `~/.cache/offprint/`). `convert` reads it, and keeps rendered equations in its `math/` folder. |
 
-The cover and `preview` need Chromium: `uv run playwright install chromium`.
+The cover, LaTeX equations and `preview` need Chromium: `uv run playwright install chromium`. Without it, equations stay as text and `convert` reports `math.renderer_unavailable`.
 
 `offprint preview EPUB` renders the first page, the first page with a figure, an equation and a table, and every page a QA check flagged, as PNGs plus a contact sheet, in about 2 seconds. It's an approximation of a Kindle. See [`docs/preview.md`](docs/preview.md).
 
@@ -171,6 +175,7 @@ offprint/
 
 - Python ≥ 3.12, managed with `uv`. Tests with `pytest`, lint and format with `ruff`.
 - Main dependencies: PyMuPDF (PDF), lxml (JATS/XHTML), Playwright + Chromium (previews and cover), Pillow.
+- Vendored: MathJax 3.2.2 (Apache-2.0), for equations.
 - External tools: `epubcheck` (QA, skipped with a warning when it isn't installed). pandoc only if an adapter needs it; the EPUB writer itself shouldn't depend on it (see #5).
 - Workflow: issue-driven, one branch and one PR per issue, [Conventional Commits](https://www.conventionalcommits.org/), protected `main`.
 
