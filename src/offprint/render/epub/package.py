@@ -43,7 +43,8 @@ def book_identifier(meta: Meta, title: str) -> str:
     if meta.arxiv_id:
         return f"arxiv:{meta.arxiv_id}"
     authors = "|".join(author.name for author in meta.authors)
-    return f"urn:uuid:{uuid.uuid5(_ID_NAMESPACE, f'{title}|{authors}|{meta.year}')}"
+    name, _ = strip_invalid_xml(f"{title}|{authors}|{meta.year}")  # uuid5 can't encode surrogates.
+    return f"urn:uuid:{uuid.uuid5(_ID_NAMESPACE, name)}"
 
 
 def render_opf(
