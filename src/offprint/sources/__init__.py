@@ -4,6 +4,7 @@
 `cached_source` is the offline counterpart for `convert`: it never touches the network.
 """
 
+from offprint.sources.cache import identifier_slug
 from offprint.sources.config import Config, load_config
 from offprint.sources.errors import (
     CacheError,
@@ -36,6 +37,7 @@ __all__ = [
     "cached_source",
     "detect_input",
     "format_report",
+    "identifier_slug",
     "load_config",
     "merge_meta",
     "resolve",

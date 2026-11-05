@@ -29,13 +29,16 @@ _UNSAFE = re.compile(r"[^a-z0-9.-]+")
 _MAX_SLUG = 80
 
 
+def identifier_slug(target: Doi | ArxivId) -> str:
+    """A readable, path-safe form of an identifier. Two identifiers can share one. Pure."""
+    return _UNSAFE.sub("_", str(target).lower())[:_MAX_SLUG].strip("._-")
+
+
 def entry_key(target: Doi | ArxivId) -> str:
     """The directory name for an identifier. Pure."""
     kind = "doi" if isinstance(target, Doi) else "arxiv"
-    identifier = str(target)
-    slug = _UNSAFE.sub("_", identifier.lower())[:_MAX_SLUG].strip("._-")
-    digest = hashlib.sha256(identifier.encode("utf-8", "backslashreplace")).hexdigest()[:16]
-    return f"{kind}-{slug}-{digest}"
+    digest = hashlib.sha256(str(target).encode("utf-8", "backslashreplace")).hexdigest()[:16]
+    return f"{kind}-{identifier_slug(target)}-{digest}"
 
 
 def entry_dir(root: Path, target: Doi | ArxivId) -> Path:
