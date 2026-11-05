@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>offprint equations</title>
+<script>
+// Every package here is inside tex-svg-full.js. `autoload` and `require` would fetch more, and
+// `noundefined` and `noerrors` would draw a bad formula instead of reporting it.
+// `physics` stays out: it redefines \div and others, which breaks papers that don't load it.
+// The macros stand in for packages MathJax doesn't have.
+window.MathJax = {
+  startup: { typeset: false },
+  svg: { fontCache: "none" },
+  tex: {
+    packages: {
+      "[+]": [
+        "boldsymbol", "braket", "cancel", "cases", "color", "gensymb", "mathtools", "mhchem",
+        "textmacros", "upgreek",
+      ],
+      "[-]": ["autoload", "noerrors", "noundefined", "require"],
+    },
+    macros: {
+      bm: ["\\boldsymbol{#1}", 1],
+      mathbbm: ["\\mathbb{#1}", 1],
+      mathds: ["\\mathbb{#1}", 1],
+      ensuremath: ["#1", 1],
+      nicefrac: ["{#1}/{#2}", 2],
+      vspace: ["", 1],
+    },
+    // The default is a percentage of the page, which an image doesn't have.
+    ams: { multlineWidth: "20em" },
+    formatError: (_parser, error) => {
+      throw error;
+    },
+  },
+};
+</script>
+</head>
+<body></body>
+</html>
