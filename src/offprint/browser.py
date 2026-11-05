@@ -14,15 +14,22 @@ class BrowserUnavailableError(RuntimeError):
 
 
 @contextmanager
-def chromium_page(width: int, height: int) -> Iterator[Page]:
-    """Yield a blank page with a `width`x`height` viewport, offline so a render can't fetch."""
+def chromium_page(width: int, height: int, *, scale: float = 1) -> Iterator[Page]:
+    """Yield a blank page with a `width`x`height` viewport, offline so a render can't fetch.
+
+    `scale` is how many device pixels a CSS pixel takes.
+    """
     with sync_playwright() as playwright:
         try:
             browser = playwright.chromium.launch()
         except PlaywrightError as error:
             raise BrowserUnavailableError(f"{INSTALL_HINT}: {error}") from error
         try:
-            context = browser.new_context(viewport={"width": width, "height": height}, offline=True)
+            context = browser.new_context(
+                viewport={"width": width, "height": height},
+                device_scale_factor=scale,
+                offline=True,
+            )
             yield context.new_page()
         finally:
             browser.close()
