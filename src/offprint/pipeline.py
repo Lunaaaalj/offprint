@@ -9,6 +9,7 @@ writes nothing. A book that reaches the gate is written with its report, whateve
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from offprint.adapters.jats import JatsError, convert_jats
 from offprint.adapters.pdf import (
     LayoutError,
     NoProfileMatch,
@@ -34,7 +35,6 @@ from offprint.sources import (
 
 _MISSING_ADAPTERS: dict[SourceTier, str] = {
     "latex": "the best source for {input} is LaTeX, but that adapter doesn't exist yet (#11)",
-    "jats": "the best source for {input} is JATS XML, but that adapter doesn't exist yet (#10)",
     "ml": "the best source for {input} needs the ML adapter, which doesn't exist yet (#16)",
 }
 
@@ -60,7 +60,7 @@ def convert_to_epub(source: str, outdir: Path, *, cover: bool = True) -> Convers
     except SourceError as error:
         raise ConvertError(str(error)) from error
 
-    doc = _read_document(resolution)
+    doc, adapter_problems = _read_document(resolution)
     doc = replace(doc, meta=combine_meta(doc.meta, resolution.meta))
     if problems := validate(doc):
         listed = "; ".join(f"{problem.code}: {problem.message}" for problem in problems)
@@ -70,6 +70,7 @@ def convert_to_epub(source: str, outdir: Path, *, cover: bool = True) -> Convers
     stem = output_stem(target)
     try:
         epub = render_epub(doc, outdir / f"{stem}.epub", cover=cover_png)
+        epub = replace(epub, problems=(*adapter_problems, *epub.problems))
         report = run_gate(
             doc, epub=epub, evidence=_read_evidence(resolution), cover=cover_png is not None
         )
@@ -115,13 +116,17 @@ def output_stem(target: SourceInput) -> str:
     return identifier_slug(target)
 
 
-def _read_document(resolution: Resolution) -> Document:
-    if resolution.tier != "pdf" or resolution.path is None:
+def _read_document(resolution: Resolution) -> tuple[Document, tuple[Problem, ...]]:
+    """Run the source's adapter. Returns the document and what the adapter couldn't map."""
+    if resolution.tier not in ("pdf", "jats") or resolution.path is None:
         template = _MISSING_ADAPTERS.get(resolution.tier or "ml", "no source for {input}")
         raise ConvertError(template.format(input=resolution.input))
     try:
-        return convert_pdf(resolution.path)
-    except (LayoutError, NoProfileMatch, UnreadablePdfError) as error:
+        if resolution.tier == "jats":
+            result = convert_jats(resolution.path)
+            return result.document, result.problems
+        return convert_pdf(resolution.path), ()
+    except (JatsError, LayoutError, NoProfileMatch, UnreadablePdfError) as error:
         raise ConvertError(str(error)) from error
 
 
