@@ -1,0 +1,123 @@
+# Frontiers two-column journal template (A4, 2020s LaTeX production).
+# Reproduces the prototype's behaviour on tests/fixtures/frontiers-frai-2026-1748985.
+# Coordinates are in points from the top left of the page.
+name: frontiers
+
+match:
+  fonts: [MinionPro, MuseoSans]
+  text: ['frontiersin\.org']
+
+page:
+  header_y: 50
+  footer_y: 795
+  split_x: 297.5
+  full_width_margin: 20
+  left: [49, 291]
+  right: [305, 546.5]
+  full: [49, 546.5]
+  sidebar:
+    page: 1
+    x_max: 200
+    keep: '^(CITATION|COPYRIGHT)'
+
+fonts:
+  bold: [Bold]
+  italic: [-It, Italic]
+
+# The first rule that matches a block, by its first span, decides the role.
+roles:
+  - {role: ignore, fonts: [Calibri]}                          # Chart labels.
+  - {role: ignore, text: '^\(Continued\)$'}
+  - {role: keywords, pages: first, text: '^KEYWORDS'}
+  - {role: ignore, pages: first, size: [0, 6]}
+  - {role: title, fonts: [MuseoSans-500], size: [20, 1000]}
+  - {role: h1, fonts: [MuseoSans-500], size: [13, 20]}
+  - {role: h2, fonts: [MuseoSans-500], size: [11.5, 13]}
+  - {role: authors, pages: first, fonts: [MuseoSans-500], size: [10, 11.5]}
+  - {role: h3, fonts: [MuseoSans-500], size: [8.5, 11.5]}
+  - {role: affiliation, pages: first, fonts: [MuseoSans-300], size: [0, 8]}
+  - {role: abstract, pages: first, fonts: [MuseoSans-300], size: [8, 10]}
+  - {role: small, size: [0, 8]}
+  - {role: body}
+  # Which blocks may be pieces of a caption, before they are merged and matched.
+  - {role: caption, context: caption, pages: later, fonts: [MuseoSans-700, MuseoSans-300], size: [0, 8]}
+  # Inside a detected table, every span of a header row is in the sans family.
+  - {role: table_header, context: table, fonts: [MuseoSans]}
+  - {role: table_body, context: table}
+
+headings:
+  number: '^(?P<number>\d+(?:\.\d+)*)\s+(?P<text>.*)$'
+  levels: [h1, h2, h3]
+
+captions:
+  figure: '^F\s*I\s*G\s*U\s*R\s*E\s+(?P<number>\d+)\s*(?P<text>.*)$'
+  table: '^TABLE\s+(?P<number>\d+)\s*(?P<text>.*)$'
+  figure_side: below
+  table_side: above
+  continuation: '^\(Continued\)'
+  fonts: [MuseoSans]
+  touch_gap: 2
+  line_tolerance: 2.5
+
+figures:
+  zoom: 4
+  bounding_fonts: [MinionPro, MuseoSans-500, MuseoSans-300]
+  min_graphic_size: 3
+  crop_margin: 2
+  full_width_overlap: 10
+  edge_tolerance: 1
+  block_gap: 3
+  caption_reach: 230
+  fallback_top_margin: 4
+  fallback_bottom_margin: 2
+
+tables:
+  text_fonts: [MinionPro]
+  text_min_size: 8.5
+  text_min_lines: 3
+  swallow_overlap: 0.6
+  keep_margin: 5
+  line_tolerance: 2.5
+  word_gap: 1
+  caption_tolerance: 2
+  reference_headers: [References]
+  year_pattern: '\d{4}[a-z]?\)?\s*$'
+
+equations:
+  zoom: 5
+  grayscale: true
+  math_fonts: [MTEX]
+  number: '^\((?P<number>\d{1,2})\)$'
+  trailing_number: '\((?P<number>\d{1,2})\)\s*$'
+  right_edge_tolerance: 4
+  max_numbered_lines: 5
+  max_centred_lines: 3
+  centred_indent: 12
+  centred_min_size: 6.5
+  centred_marker: '='
+  merge_gap: 8
+  crop_margin: 3
+
+text:
+  paragraph_end: '[.:?!]\)?”?$|\.\)$'
+  loose_join_roles: [body]
+  bullet: '^•\s*'
+  word_gap: 1
+  # This template doesn't break words: on the fixture all 15 lowercase breaks are real compounds.
+  line_end_hyphens: keep
+
+metadata:
+  citation: '\((?P<year>\d{4})\)\s.*\.\s(?P<journal>Front\.\s.*?\.)\s(?P<volume>\d+):(?P<article_id>\d+)\.\s*doi:\s*(?P<doi>\S+?)\.?$'
+  citation_block: '^CITATION\s*'
+  copyright_block: '^COPYRIGHT\s*'
+  holder: '©\s*\d{4}\s+(?P<holder>.+?)\.'
+  licenses:
+    - {pattern: 'Creative\s+Commons\s+Attribution\s+License\s+\(CC\s+BY\)', spdx: CC-BY-4.0}
+  author_separator: ',\s*|\s+and\s+'
+  corresponding_marker: '*'
+  keyword_prefix: '^KEYWORDS\s*'
+  keyword_separator: ',\s*'
+
+references:
+  heading: '^References$'
+  doi: '(?:doi:\s*|doi\.org/)(?P<doi>10\.\d{4,9}/\S+?)\.?(?:\s|$)'
