@@ -271,7 +271,8 @@ def test_a_local_files_graphics_are_found(folder: str, tmp_path: Path) -> None:
     (tmp_path / folder).mkdir(exist_ok=True)
     shutil.copy(FIXTURE_GRAPHIC, tmp_path / folder / "fig1.jpg")
 
-    result = run(tmp_path / "paper.xml", "-o", tmp_path / "out", "--no-cover")
+    # This article has no metadata, which the gate rightly sends to review.
+    result = run(tmp_path / "paper.xml", "-o", tmp_path / "out", "--no-cover", "--allow-review")
 
     assert result.exit_code == 0, result.output
 
@@ -281,8 +282,12 @@ def test_what_the_adapter_couldnt_map_is_printed(tmp_path: Path) -> None:
 
     result = run(tmp_path / "paper.xml", "-o", tmp_path / "out", "--no-cover")
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == 3, result.output
     assert "jats.unmapped_element" in result.stderr
+    assert (tmp_path / "out" / "paper.epub").is_file()
+    report = json.loads((tmp_path / "out" / "paper.qa.json").read_text())
+    assert report["verdict"] == "review"
+    assert "jats.unmapped_element" in [item["check"] for item in report["findings"]]
 
 
 def test_the_resolvers_metadata_reaches_a_jats_book(tmp_path: Path) -> None:

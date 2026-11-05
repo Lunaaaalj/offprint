@@ -32,6 +32,8 @@ Ids are stable. Each check has a severity, `error` or `warn`, and a hint for fix
 | `meta.required` | error | The paper has a title, at least one author and a license. |
 | `block.duplicate_id`, `provenance.*`, `asset.*`, `figure.duplicate_number`, `table.duplicate_number`, `equation.empty`, `heading.*` | error | The rest of `offprint.ir.validate`, under its own codes (see [ir.md](ir.md)). |
 | `epub.invalid_xml_chars`, `epub.equation_text_fallback`, `epub.link_dropped`, `epub.asset_converted` | warn | What the renderer had to change, under its own codes. |
+| `jats.unmapped_element`, `jats.figure_without_graphic`, `jats.empty_formula` | error | What the JATS adapter couldn't carry over, where content may be missing. |
+| `jats.unmapped_inline`, `jats.math_fallback`, `jats.inline_graphic`, `jats.table_as_figure`, `jats.license_unknown`, `jats.no_front` | warn | What the JATS adapter carried over in a weaker form. |
 | `cover.overflow`, `cover.contrast` | error | The cover's layout. A failure stops the conversion, so in a report these are `pass`, or `skip` with `--no-cover`. |
 
 Numbers that aren't plain integers, such as "S1" and "A.2", aren't held to the 1..n rule, but they still have to match the source.
@@ -127,3 +129,5 @@ The score is the share of the checks that ran and passed, from 0 to 1, with a ch
 2. Add it to `CHECKS` with a stable id, a severity and a hint, and call it from `gate.py`.
 3. Add a mutation test: break the fixture's IR and assert the check fires.
 4. Add it to the table above.
+
+A new `Problem` code from an adapter or the renderer is a check too, and goes in `CHECKS`. A test scans the source for codes, because the gate raises on one it doesn't know.
