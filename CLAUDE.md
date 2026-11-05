@@ -45,12 +45,13 @@ uv run ruff check . && uv run ruff format --check .
 uv run offprint --version
 ```
 
-Ruff skips `prototype/`. `offprint preview EPUB` is a stub that exits 1 until #7 lands. The other commands:
+Ruff skips `prototype/`. The other commands:
 
 ```sh
 uv run offprint convert INPUT [-o OUTDIR] [--no-cover]  # a local PDF or a cached identifier, to an EPUB
 uv run offprint convert paper.pdf --emit-ir             # write the IR as JSON instead
 uv run offprint resolve ID [--refresh]                  # the networked stage: find and cache a source
+uv run offprint preview EPUB                            # Kindle-sized page previews
 ```
 
 `src/offprint/pipeline.py` connects the stages. `cli.py` stays a thin wrapper over it.
