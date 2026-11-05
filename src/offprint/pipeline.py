@@ -1,6 +1,7 @@
 """The conversion pipeline: from an INPUT to a finished EPUB, without touching the network.
 
-input → `cached_source` → adapter → `validate` → `generate_cover` → `render_epub` → `run_gate`
+input → `cached_source` → adapter → `typeset_math` → `validate` → `generate_cover` → `render_epub`
+→ `run_gate`
 
 Every failure the user can act on becomes a `ConvertError`, with a message for the terminal, and
 writes nothing. A book that reaches the gate is written with its report, whatever the verdict.
@@ -19,6 +20,7 @@ from offprint.adapters.pdf import (
 )
 from offprint.browser import BrowserUnavailableError
 from offprint.cover import CoverLayoutError, generate_cover
+from offprint.equations import typeset_math
 from offprint.extraction import SourceEvidence
 from offprint.ir import Document, Meta, Problem, SourceTier, validate
 from offprint.qa import QaReport, run_gate, write_report
@@ -62,6 +64,8 @@ def convert_to_epub(source: str, outdir: Path, *, cover: bool = True) -> Convers
 
     doc, adapter_problems = _read_document(resolution)
     doc = replace(doc, meta=combine_meta(doc.meta, resolution.meta))
+    typeset = typeset_math(doc)
+    doc = typeset.doc
     if problems := validate(doc):
         listed = "; ".join(f"{problem.code}: {problem.message}" for problem in problems)
         raise ConvertError(f"the IR is invalid: {listed}")
@@ -70,7 +74,7 @@ def convert_to_epub(source: str, outdir: Path, *, cover: bool = True) -> Convers
     stem = output_stem(target)
     try:
         epub = render_epub(doc, outdir / f"{stem}.epub", cover=cover_png)
-        epub = replace(epub, problems=(*adapter_problems, *epub.problems))
+        epub = replace(epub, problems=(*adapter_problems, *typeset.problems, *epub.problems))
         report = run_gate(
             doc, epub=epub, evidence=_read_evidence(resolution), cover=cover_png is not None
         )

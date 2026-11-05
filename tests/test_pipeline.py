@@ -18,7 +18,17 @@ from offprint import pipeline
 from offprint.browser import BrowserUnavailableError
 from offprint.cli import app
 from offprint.cover import CoverLayoutError
-from offprint.ir import Author, Document, Heading, License, Meta, Problem, Text
+from offprint.ir import (
+    Author,
+    Document,
+    Equation,
+    Heading,
+    License,
+    Meta,
+    Problem,
+    Provenance,
+    Text,
+)
 from offprint.pipeline import combine_meta, convert_to_epub, output_stem
 from offprint.render.epub import EpubResult
 from offprint.sources import ArxivId, Doi, Resolution, cache, crossref, detect_input
@@ -464,3 +474,40 @@ def test_a_cached_identifier_converts_offline_with_real_crossref_metadata(tmp_pa
     with zipfile.ZipFile(path) as book:
         package = book.read("OEBPS/content.opf").decode()
     assert "Artificial intelligence techniques" in package
+
+
+# Equations
+
+
+LATEX_DOC = Document(
+    meta=Meta(title="T"),
+    blocks=(
+        Equation(id="good", alt="", latex=r"\frac{a}{b}"),
+        Equation(id="bad", alt="", latex=r"\nosuchmacro"),
+    ),
+    provenance={"good": Provenance(adapter="test"), "bad": Provenance(adapter="test")},
+)
+
+
+@pytest.mark.usefixtures("chromium")
+def test_convert_renders_latex_and_reports_what_it_could_not(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(pipeline, "_read_document", lambda _resolution: LATEX_DOC)
+    result = convert_to_epub(str(PDF), tmp_path, cover=False)
+    codes = [(problem.code, problem.block_id) for problem in result.problems]
+    assert codes == [("math.render_failed", "bad"), ("epub.equation_text_fallback", "bad")]
+    with zipfile.ZipFile(result.path) as book:
+        assert any(name.endswith(".png") for name in book.namelist())
+
+
+def test_a_paper_without_latex_never_starts_the_math_renderer(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    def refuse(*_: object) -> None:
+        raise AssertionError("the math renderer started for a cropped PDF")
+
+    monkeypatch.setattr("offprint.equations.mathjax.chromium_page", refuse)
+    book = convert_to_epub(str(PDF), tmp_path, cover=False)
+    assert book.path.exists()
+    assert not any(problem.code.startswith("math.") for problem in book.problems)
