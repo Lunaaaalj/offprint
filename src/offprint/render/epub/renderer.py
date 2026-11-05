@@ -66,6 +66,18 @@ class EpubResult:
     problems: tuple[Problem, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class BookLocation:
+    """A place in the EPUB, relative to the OPF, like the book's own links."""
+
+    file: str
+    fragment: str | None = None
+    """The id of the place, or of the nearest element before it that has one."""
+
+
+FRONT_MATTER_LOCATION = BookLocation(FRONT_MATTER_FILE)
+
+
 class _ImageStore:
     """The book's images in first-use order, each prepared once per grayscale setting."""
 
@@ -174,6 +186,24 @@ def render_epub(
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
     return EpubResult(path, tuple(ctx.problems))
+
+
+def block_locations(doc: Document) -> dict[str, BookLocation]:
+    """Say where `render_epub` puts each block. Paragraphs and list items have no id of their own,
+    so they get the nearest one before them.
+    """
+    leading, chapters = split_chapters(doc.blocks)
+    anchors = _assign_anchors(doc.blocks)
+    locations = {}
+    for filename, blocks in [
+        (FRONT_MATTER_FILE, leading),
+        *((chapter.filename, chapter.blocks) for chapter in chapters),
+    ]:
+        fragment = None
+        for block in blocks:
+            fragment = anchors.get(block.id, fragment)
+            locations[block.id] = BookLocation(filename, fragment)
+    return locations
 
 
 def _load_cover(cover: Path | str | bytes | None) -> bytes | None:
