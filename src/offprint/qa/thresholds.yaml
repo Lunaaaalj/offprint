@@ -1,0 +1,29 @@
+# What the QA gate compares against. Nothing here is specific to a publisher.
+coverage:
+  # Share of the source's words of min_word_letters or more that must reach the EPUB. Words the
+  # source draws inside equation and figure images aren't counted. The fixture scores 0.997: what
+  # it doesn't reach is table headers repeated on later pages, which the book rightly has once. An
+  # average page of the fixture is 3% of its words, so 0.98 notices a lost page, though not a page
+  # that's mostly images.
+  threshold: 0.98
+  min_word_letters: 5
+  # How many of the pages that lost the most words a failing check lists.
+  worst_pages: 5
+
+tables:
+  # A table whose first header is one of these lists references, one per row.
+  reference_headers: [References]
+  # A reference table's first cell has to end like this.
+  year_pattern: '\d{4}[a-z]?\)?\s*$'
+
+figures:
+  # Share of another caption's box that has to lie inside a figure's box for it to count as swallowed.
+  foreign_caption_overlap: 0.5
+
+epubcheck:
+  timeout_seconds: 120
+
+# The score is a number to watch over time. The verdict doesn't use it: any error means review.
+score:
+  # What a check that ends in warnings contributes, against 1 for a pass and 0 for a failure.
+  warn_weight: 0.5
