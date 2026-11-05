@@ -7,6 +7,7 @@ that look alike. Coordinates are in page points, with the origin at the top left
 """
 
 from dataclasses import dataclass
+from typing import Literal
 
 from offprint.ir import BBox
 
@@ -53,3 +54,39 @@ class ExtractedTable:
     bbox: BBox
     page: int
     header: tuple[TableCell | None, ...] = ()
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SourceText:
+    """A piece of the source's reading text, with its line breaks already undone."""
+
+    text: str
+    page: int
+    bbox: BBox
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SourceCaption:
+    kind: Literal["figure", "table"]
+    number: str
+    page: int
+    bbox: BBox
+    continued: bool = False
+    """It's the "(Continued)" caption of a table's later piece, so it isn't a new table."""
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SourceEquation:
+    number: str
+    page: int
+    bbox: BBox
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SourceEvidence:
+    """What the source itself shows, read apart from the IR, for the QA gate to compare against."""
+
+    pages: int
+    texts: tuple[SourceText, ...]
+    captions: tuple[SourceCaption, ...]
+    equations: tuple[SourceEquation, ...]

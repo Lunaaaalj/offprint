@@ -8,6 +8,7 @@ from functools import partial
 from pathlib import Path
 
 from offprint.adapters.pdf.assemble import LayoutError, assemble
+from offprint.adapters.pdf.evidence import collect_evidence
 from offprint.adapters.pdf.extract import (
     UnreadablePdfError,
     citation_metadata,
@@ -15,7 +16,9 @@ from offprint.adapters.pdf.extract import (
     document_facts,
     open_pdf,
     read_pages,
+    read_text,
 )
+from offprint.extraction import SourceEvidence
 from offprint.ir import Document, to_json, validate
 from offprint.profiles import NoProfileMatch, Profile, select_profile
 
@@ -48,4 +51,18 @@ def emit_ir(path: Path, outdir: Path) -> Path:
     return target
 
 
-__all__ = ["LayoutError", "NoProfileMatch", "UnreadablePdfError", "convert_pdf", "emit_ir"]
+def read_evidence(path: Path, profile: Profile | None = None) -> SourceEvidence:
+    """Read what the QA gate compares the book with. It takes no part in the conversion."""
+    with open_pdf(path) as pdf:
+        profile = profile or select_profile(document_facts(pdf))
+        return collect_evidence(read_text(pdf, profile.fonts), profile)
+
+
+__all__ = [
+    "LayoutError",
+    "NoProfileMatch",
+    "UnreadablePdfError",
+    "convert_pdf",
+    "emit_ir",
+    "read_evidence",
+]
