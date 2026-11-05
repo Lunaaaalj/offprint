@@ -31,9 +31,11 @@ Ids are stable. Each check has a severity, `error` or `warn`, and a hint for fix
 | `epubcheck` | error (`warn` for its warnings) | The book passes `epubcheck`. Skipped when it isn't installed. |
 | `meta.required` | error | The paper has a title, at least one author and a license. |
 | `block.duplicate_id`, `provenance.*`, `asset.*`, `figure.duplicate_number`, `table.duplicate_number`, `equation.empty`, `heading.*` | error | The rest of `offprint.ir.validate`, under its own codes (see [ir.md](ir.md)). |
-| `epub.invalid_xml_chars`, `epub.equation_text_fallback`, `epub.link_dropped`, `epub.asset_converted` | warn | What the renderer had to change, under its own codes. |
+| `epub.invalid_xml_chars`, `epub.equation_text_fallback`, `epub.inline_math_text_fallback`, `epub.link_dropped`, `epub.asset_converted` | warn | What the renderer had to change, under its own codes. |
 | `jats.unmapped_element`, `jats.figure_without_graphic`, `jats.empty_formula` | error | What the JATS adapter couldn't carry over, where content may be missing. |
 | `jats.unmapped_inline`, `jats.math_fallback`, `jats.inline_graphic`, `jats.table_as_figure`, `jats.license_unknown`, `jats.no_front` | warn | What the JATS adapter carried over in a weaker form. |
+| `math.renderer_unavailable`, `math.preamble_failed` | error | Equations that may be wrong or are all plain text. See [`equations.md`](equations.md). |
+| `math.render_failed`, `math.system_font`, `math.cache_unwritable` | warn | One formula that stayed as text or used a system font, or a cache that couldn't be written. |
 | `cover.overflow`, `cover.contrast` | error | The cover's layout. A failure stops the conversion, so in a report these are `pass`, or `skip` with `--no-cover`. |
 
 Numbers that aren't plain integers, such as "S1" and "A.2", aren't held to the 1..n rule, but they still have to match the source.

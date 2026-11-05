@@ -32,8 +32,10 @@ _IR_CODES = (
     "heading.level",
     "heading.jump",
 )
-# Problems the adapter and the renderer reported, which `EpubResult.problems` carries.
-_CONVERSION_CODES = tuple(check.id for check in CHECKS if check.id.startswith(("epub.", "jats.")))
+# Problems the adapter, the equation stage and the renderer reported, in `EpubResult.problems`.
+_CONVERSION_CODES = tuple(
+    check.id for check in CHECKS if check.id.startswith(("epub.", "jats.", "math."))
+)
 _COVER_CODES = tuple(check.id for check in CHECKS if check.id.startswith("cover."))
 
 

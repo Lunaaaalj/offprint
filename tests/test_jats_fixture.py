@@ -242,7 +242,10 @@ def test_convert_stays_offline(tmp_path: Path) -> None:
     assert convert_to_epub(str(XML), tmp_path, cover=False).path.is_file()
 
 
-def test_equations_wait_for_the_renderer_visibly(tmp_path: Path) -> None:
-    problems = convert_to_epub(str(XML), tmp_path, cover=False).problems
+@pytest.mark.usefixtures("chromium")
+def test_every_equation_is_typeset_and_the_gate_passes(tmp_path: Path) -> None:
+    conversion = convert_to_epub(str(XML), tmp_path, cover=False)
 
-    assert {problem.code for problem in problems} == {"epub.equation_text_fallback"}
+    assert conversion.problems == ()
+    assert conversion.report.verdict == "pass"
+    assert conversion.report.counts.equations == 18
