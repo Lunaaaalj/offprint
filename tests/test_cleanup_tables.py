@@ -275,6 +275,22 @@ def test_a_tie_goes_left() -> None:
     assert grid(merge_phantom_columns(phantom)) == [["a b", "c"]]
 
 
+def test_a_tie_goes_to_the_neighbour_whose_text_starts_in_the_same_place() -> None:
+    # Tables 6, 10 and 17: a real column's short last lines form a phantom column inside it. These
+    # lines start with the column, so they belong to it, not to the references on their left.
+    reference = cell("Khan et al. (2022)", x=0.0)
+    last_line = cell("and performance metrics.", x=70.0, y=30.0)
+    long_lines = cell("The multimodal approach", x=70.0)
+    phantom = table(
+        (reference, last_line, long_lines),
+        header=(cell("References"), cell(""), cell("Contributions", x=70.0)),
+    )
+
+    assert grid(merge_phantom_columns(phantom)) == [
+        ["Khan et al. (2022)", "The multimodal approach and performance metrics."]
+    ]
+
+
 def test_a_column_emptied_by_trimming_disappears() -> None:
     trimmed = table(row("a", None), header=(cell("Only"), None))
 
