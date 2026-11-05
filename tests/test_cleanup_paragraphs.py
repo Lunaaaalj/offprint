@@ -1,6 +1,6 @@
 """Paragraph joining, from `prototype/README.md` item 6."""
 
-from offprint.cleanup import ParagraphOptions, join_paragraphs, join_runs
+from offprint.cleanup import ParagraphOptions, drop_prefix, join_paragraphs, join_runs
 from offprint.ir import (
     Block,
     Document,
@@ -71,10 +71,28 @@ def test_a_capitalised_paragraph_stays_by_default() -> None:
 def test_a_capitalised_continuation_joins_when_allowed() -> None:
     doc = join_paragraphs(
         document(para("a", "as shown by"), para("b", "Smith.")),
-        ParagraphOptions(require_lowercase=False),
+        ParagraphOptions(loose_roles=("body",)),
     )
 
     assert text_of(doc) == ["as shown by Smith."]
+
+
+def test_a_loose_role_does_not_loosen_the_others() -> None:
+    doc = join_paragraphs(
+        document(para("a", "no stop", role="small"), para("b", "Next entry", role="small")),
+        ParagraphOptions(loose_roles=("body",)),
+    )
+
+    assert len(doc.blocks) == 2
+
+
+def test_a_paragraph_that_starts_new_is_never_absorbed() -> None:
+    doc = join_paragraphs(
+        document(para("a", "the items are"), para("b", "• one")),
+        ParagraphOptions(loose_roles=("body",), starts_new="^•"),
+    )
+
+    assert len(doc.blocks) == 2
 
 
 def test_different_roles_stay_apart() -> None:
@@ -141,3 +159,19 @@ def test_join_runs_leaves_math_alone() -> None:
     joined = join_runs((MathInline("x-"),), (Text("axis"),))
 
     assert joined == (MathInline("x-"), Text(" axis"))
+
+
+def test_drop_prefix_removes_characters_across_runs() -> None:
+    runs = (Text("FIGURE "), Italic((Text("1 A"),)), Text(" chart"))
+
+    assert drop_prefix(runs, 9) == (Italic((Text("A"),)), Text(" chart"))
+
+
+def test_drop_prefix_of_nothing_keeps_the_runs() -> None:
+    runs = (Text("a"), Italic((Text("b"),)))
+
+    assert drop_prefix(runs, 0) == runs
+
+
+def test_drop_prefix_of_everything_is_empty() -> None:
+    assert drop_prefix((Text("abc"),), 3) == ()

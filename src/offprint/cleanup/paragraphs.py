@@ -6,16 +6,18 @@ from dataclasses import dataclass, replace
 from offprint.cleanup.registry import step
 from offprint.cleanup.runs import join_runs, plain_text
 from offprint.cleanup.text import KeepHyphen
-from offprint.ir import Block, Document, Figure, Paragraph, Provenance, Table
+from offprint.ir import Block, Document, Figure, Paragraph, ParagraphRole, Provenance, Table
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ParagraphOptions:
     terminator: str = r"[.:?!]\)?[”\"]?$"
     """A paragraph whose text matches this regex is finished."""
-    require_lowercase: bool = True
-    """Only join when the next paragraph starts lowercase. Turn this off when roles are reliable
-    enough that same-role text after an unfinished sentence always continues it."""
+    loose_roles: tuple[ParagraphRole, ...] = ()
+    """In these roles an unfinished paragraph absorbs the next even if it doesn't start lowercase.
+    Use it where roles are reliable enough that same-role text always continues the sentence."""
+    starts_new: str | None = None
+    """A paragraph whose text matches this regex is never absorbed, such as a list bullet."""
     keep_hyphen: KeepHyphen | None = None
 
 
@@ -26,7 +28,9 @@ def _continues(previous: Paragraph, block: Paragraph, options: ParagraphOptions)
     after = plain_text(block.runs).strip()
     if not before or not after or re.search(options.terminator, before):
         return False
-    return after[0].islower() or not options.require_lowercase
+    if options.starts_new is not None and re.search(options.starts_new, after):
+        return False
+    return after[0].islower() or block.role in options.loose_roles
 
 
 def _last_non_float(blocks: list[Block]) -> int | None:

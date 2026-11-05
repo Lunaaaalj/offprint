@@ -136,17 +136,17 @@ def vocabulary(texts: Iterable[str]) -> frozenset[str]:
 def keep_hyphen_from_vocabulary(words: Iterable[str]) -> KeepHyphen:
     """Build a `keep_hyphen` hook from words seen whole, such as the rest of the same paper.
 
-    A hyphen stays if the hyphenated form was seen, or if both sides are words and the closed-up
-    form isn't. So `in-formation` closes up in a paper that has `information`, while
-    `magnetization-prepared` survives.
+    The closed-up form wins if it was seen. Otherwise a hyphen stays if the hyphenated form was
+    seen or both sides are words. So `in-formation` closes up in a paper that has `information`,
+    while `magnetization-prepared` survives.
     """
     known = frozenset(word.casefold() for word in words)
 
     def keep_hyphen(left: str, right: str) -> bool:
         left, right = left.casefold(), right.casefold()
-        if f"{left}-{right}" in known:
-            return True
-        return left + right not in known and left in known and right in known
+        if left + right in known:
+            return False
+        return f"{left}-{right}" in known or (left in known and right in known)
 
     return keep_hyphen
 

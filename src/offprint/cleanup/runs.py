@@ -36,6 +36,29 @@ def _without_last_character(runs: Runs) -> Runs:
     return runs[:-1] + shorter
 
 
+def drop_prefix(runs: Runs, count: int) -> Runs:
+    """Remove the first `count` characters of the text, keeping the styling of what's left."""
+    kept: list[Run] = []
+    for run in runs:
+        length = len(_run_text(run))
+        if count >= length:
+            count -= length
+        elif count == 0:
+            kept.append(run)
+        else:
+            kept.append(_without_prefix(run, count))
+            count = 0
+    return tuple(kept)
+
+
+def _without_prefix(run: Run, count: int) -> Run:
+    if isinstance(run, Text):
+        return Text(run.text[count:])
+    if isinstance(run, MathInline):
+        return replace(run, text=run.text[count:], latex=None)
+    return replace(run, runs=drop_prefix(run.runs, count))
+
+
 def join_runs(left: Runs, right: Runs, keep_hyphen: KeepHyphen | None = None) -> Runs:
     """Join two pieces of a sentence that a line, column or page break separated."""
     if not left or not right:
