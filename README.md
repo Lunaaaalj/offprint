@@ -6,7 +6,7 @@ Turn research papers into clean, reflowable Kindle books, with figures, tables, 
 
 A two-column journal PDF is unreadable on a 6-inch e-ink screen. offprint rebuilds the paper's *structure* (sections, paragraphs, figures, tables, equations, references) and writes it as an EPUB that the Kindle can reflow, restyle and navigate.
 
-> **Status: early development.** `offprint convert` turns a PDF from a supported publisher template into an EPUB with a cover, and checks the result. The JATS and LaTeX adapters and delivery are still to come.
+> **Status: early development.** `offprint convert` turns JATS XML, or a PDF from a supported publisher template, into an EPUB with a cover, and checks the result. The LaTeX adapter and delivery are still to come.
 > The roadmap is in [GitHub issues](../../issues), and implementation happens with Claude Code, issue by issue.
 
 ![Prototype output on a Kindle-sized screen](docs/kindle-preview.png)
@@ -96,12 +96,13 @@ Each item is a [GitHub issue](../../issues).
 
 ```sh
 offprint convert paper.pdf -o build/       # → build/paper.epub
+offprint convert paper.xml -o build/       # JATS, with its images in graphics/ or beside it
 offprint resolve 10.3389/frai.2026.1748985 # find the best source and cache it
 offprint convert 10.3389/frai.2026.1748985 # → 10.3389_frai.2026.1748985.epub, from the cache
 offprint preview build/paper.epub          # → Kindle-sized PNGs in build/paper.preview/
 ```
 
-`convert` never uses the network. INPUT is a local PDF, or a DOI or arXiv id that `resolve` has already cached; an uncached identifier fails and tells you to run `resolve`. If the best cached source is LaTeX or JATS, `convert` fails and names the missing adapter (#11, #10) rather than quietly using a worse source.
+`convert` never uses the network. INPUT is a local PDF or JATS file, or a DOI or arXiv id that `resolve` has already cached; an uncached identifier fails and tells you to run `resolve`. If the best cached source is LaTeX, `convert` fails and names the missing adapter (#11) rather than quietly using a worse source.
 
 | `convert` option | Effect |
 |---|---|
@@ -110,7 +111,22 @@ offprint preview build/paper.epub          # → Kindle-sized PNGs in build/pape
 | `--emit-ir` | Write `<stem>.ir.json` and `<stem>.assets/` instead of an EPUB. Takes local PDFs only. |
 | `--allow-review` | Exit 0 even if the QA verdict is `review`. |
 
-`convert` prints the EPUB's path on stdout and a QA summary on stderr, and writes `<stem>.qa.json` and `<stem>.qa.md` next to the book. If the verdict is `review`, it exits 3 and the book is still there to look at. See [`docs/qa.md`](docs/qa.md).
+`convert` prints the EPUB's path on stdout and a QA summary on stderr, and writes `<stem>.qa.json` and `<stem>.qa.md` next to the book. If the verdict is `review`, it exits 3 and the book is still there to look at. See [`docs/qa.md`](docs/qa.md). Anything the adapter couldn't map (`jats.*` codes) or the renderer had to change (`epub.*` codes) is on stderr and in the report.
+
+`resolve` also downloads a JATS article's figures, from NCBI's [PMC Open Access dataset](https://pmc.ncbi.nlm.nih.gov/tools/pmcaws/), into the cache. Its report says how many arrived. A figure that's missing stops `convert` with `jats.graphic_missing`, because a book must not lose a figure quietly. A publisher's own XML has no such dataset behind it, so its figures can't be fetched yet.
+
+| Code | Meaning |
+|---|---|
+| `jats.graphic_missing` | Stops the conversion: an image the article uses isn't on disk. |
+| `jats.graphic_unreadable` | Stops the conversion: an image's file isn't an image. |
+| `jats.unmapped_element`, `jats.unmapped_inline` | Element with no mapping. Its text is kept. |
+| `jats.math_fallback` | Maths that couldn't become LaTeX, so it's `\text{…}`. |
+| `jats.empty_formula` | A `disp-formula` with nothing in it. |
+| `jats.inline_graphic` | The IR has no inline images, so the alt text or `[image]` stands in. |
+| `jats.figure_without_graphic` | A `fig` with no image. Its caption is kept. |
+| `jats.table_as_figure` | A table that is only an image in the source. |
+| `jats.license_unknown` | A license with no Creative Commons URL, left out rather than guessed. |
+| `jats.no_front` | The article has no `article-meta`. |
 
 When the resolver has metadata for the paper, it's combined with what the adapter extracted. The other side always fills a gap:
 

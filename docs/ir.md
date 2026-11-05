@@ -58,4 +58,4 @@ The JSON carries an `ir_version`, and `from_json` raises `IRFormatError` for any
 | `heading.level` | Heading levels start at 1. |
 | `heading.jump` | Levels go down by at most 1 at a time, starting from level 1. Going back up is free. |
 
-`Cite.target` isn't checked against `Reference.key`, because a PDF adapter often can't link them.
+`Cite.target` isn't checked against `Reference.key`, because a PDF adapter often can't link them. The JATS adapter keeps every `xref` as a `Cite` with the source's `rid`, so a citation of a figure or table has a target that no `Reference` holds. The renderer shows those as plain text.
