@@ -5,11 +5,14 @@ from dataclasses import replace
 from offprint.ir import (
     Asset,
     Block,
+    Bold,
     Document,
     Equation,
     Figure,
     Heading,
+    MathInline,
     Meta,
+    Paragraph,
     Provenance,
     Table,
     Text,
@@ -139,3 +142,13 @@ def test_provenance_for_an_unknown_block() -> None:
 
 def test_equation_with_neither_latex_nor_asset() -> None:
     assert codes(doc_of(Equation(id="e1", alt="E"))) == ["equation.empty"]
+
+
+def test_inline_math_with_a_missing_asset() -> None:
+    doc = doc_of(Paragraph(id="p", runs=(Bold((MathInline("", "x", "gone"),)),)))
+    assert codes(doc) == ["asset.unresolved"]
+
+
+def test_inline_math_in_the_abstract_with_a_missing_asset() -> None:
+    doc = replace(doc_of(), meta=Meta(title="T", abstract=(MathInline("", "x", "gone"),)))
+    assert codes(doc) == ["asset.unresolved"]

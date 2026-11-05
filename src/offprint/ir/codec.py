@@ -83,6 +83,8 @@ def _encode_asset(asset: Asset, assets_dir: Path) -> dict[str, Any]:
         encoded["width"] = asset.width
     if asset.height is not None:
         encoded["height"] = asset.height
+    if asset.box is not None:
+        encoded["box"] = _encode(asset.box, assets_dir)
     return encoded
 
 
@@ -107,7 +109,7 @@ def _decode(value: Any, assets_dir: Path) -> Any:
 
 
 def _decode_asset(value: dict[str, Any], assets_dir: Path) -> Asset:
-    fields = {key: item for key, item in value.items() if key != "type"}
+    fields = {key: _decode(item, assets_dir) for key, item in value.items() if key != "type"}
     digest = fields.pop("sha256", None)
     if not isinstance(digest, str) or not _SHA256.fullmatch(digest):
         raise IRFormatError(f"asset {value.get('id')!r}: bad sha256 {digest!r}")

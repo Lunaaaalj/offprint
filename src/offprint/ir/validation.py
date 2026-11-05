@@ -1,9 +1,11 @@
 """Structural rules every Document must satisfy, reported as problems with stable codes."""
 
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass
 
-from offprint.ir.model import Document, Equation, Figure, Heading, Table
+from offprint.ir.model import Document, Equation, Figure, Heading, MathInline, Run, Table
+from offprint.ir.walk import iter_runs, map_runs
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,7 +64,21 @@ def _check_assets(doc: Document) -> list[Problem]:
             if block.asset not in doc.assets:
                 message = f"block {block.id!r} points to the missing asset {block.asset!r}"
                 problems.append(Problem("asset.unresolved", message, block.id))
+        problems += _check_inline_assets(doc, iter_runs(block), block.id)
+    leaves: list[Run] = []
+    map_runs(doc.meta.abstract, lambda run: leaves.append(run) or (run,))
+    problems += _check_inline_assets(doc, leaves, None)
     return problems
+
+
+def _check_inline_assets(doc: Document, runs: Iterable[Run], block_id: str | None) -> list[Problem]:
+    return [
+        Problem(
+            "asset.unresolved", f"inline math points to the missing asset {run.asset!r}", block_id
+        )
+        for run in runs
+        if isinstance(run, MathInline) and run.asset is not None and run.asset not in doc.assets
+    ]
 
 
 def _check_numbers(doc: Document, kind: type[Figure | Table], name: str) -> list[Problem]:

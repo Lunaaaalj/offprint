@@ -22,6 +22,7 @@ from offprint.ir import (
     License,
     Link,
     ListItem,
+    MathBox,
     MathInline,
     Meta,
     Paragraph,
@@ -210,3 +211,18 @@ def test_another_ir_version_is_rejected(tmp_path: Path) -> None:
 def test_malformed_files_fail_clearly(text: str, message: str, tmp_path: Path) -> None:
     with pytest.raises(IRFormatError, match=message):
         from_json(text, tmp_path)
+
+
+def test_the_size_of_a_formula_survives_the_round_trip(tmp_path: Path) -> None:
+    asset = Asset(
+        id="m",
+        mime="image/png",
+        bytes=b"x",
+        box=MathBox(width=1.25, height=2.5, depth=0.75),
+    )
+    doc = Document(
+        meta=Meta(title="T"),
+        blocks=(Paragraph(id="p", runs=(MathInline("", "x", "m"),)),),
+        assets={"m": asset},
+    )
+    assert from_json(to_json(doc, tmp_path), tmp_path) == doc

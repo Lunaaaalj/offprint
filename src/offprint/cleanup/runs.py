@@ -55,7 +55,7 @@ def _without_prefix(run: Run, count: int) -> Run:
     if isinstance(run, Text):
         return Text(run.text[count:])
     if isinstance(run, MathInline):
-        return replace(run, text=run.text[count:], latex=None)
+        return replace(run, text=run.text[count:], latex=None, asset=None)
     return replace(run, runs=drop_prefix(run.runs, count))
 
 

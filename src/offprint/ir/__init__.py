@@ -17,6 +17,7 @@ from offprint.ir.model import (
     License,
     Link,
     ListItem,
+    MathBox,
     MathInline,
     Meta,
     Paragraph,
@@ -32,6 +33,7 @@ from offprint.ir.model import (
     Text,
 )
 from offprint.ir.validation import Problem, validate
+from offprint.ir.walk import iter_runs, map_block_runs, map_runs
 
 __all__ = [
     "IR_VERSION",
@@ -51,6 +53,7 @@ __all__ = [
     "License",
     "Link",
     "ListItem",
+    "MathBox",
     "MathInline",
     "Meta",
     "Paragraph",
@@ -66,6 +69,9 @@ __all__ = [
     "Table",
     "Text",
     "from_json",
+    "iter_runs",
+    "map_block_runs",
+    "map_runs",
     "to_json",
     "validate",
 ]

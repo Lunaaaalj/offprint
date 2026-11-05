@@ -58,6 +58,7 @@ class Cite:
 class MathInline:
     text: str
     latex: str | None = None
+    asset: str | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -149,12 +150,22 @@ class Meta:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class MathBox:
+    """A rendered formula's size in em. `depth` is how far it reaches below the text baseline."""
+
+    width: float
+    height: float
+    depth: float
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Asset:
     id: str
     mime: str
     bytes: bytes = field(repr=False)
     width: int | None = None
     height: int | None = None
+    box: MathBox | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
