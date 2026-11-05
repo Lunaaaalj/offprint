@@ -1,0 +1,136 @@
+/* The cover template. Text boxes are fixed; layout.js shrinks text into them, within
+   --fit-max and --fit-min. Nothing here may clip text, or the overflow check can't see it. */
+
+@font-face { font-family: Literata; font-weight: 400; src: url(fonts/literata-latin-400-normal.woff2); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: Literata; font-weight: 700; src: url(fonts/literata-latin-700-normal.woff2); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: Literata; font-weight: 400; src: url(fonts/literata-latin-ext-400-normal.woff2); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: Literata; font-weight: 700; src: url(fonts/literata-latin-ext-700-normal.woff2); unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: Literata; font-weight: 400; src: url(fonts/literata-greek-400-normal.woff2); unicode-range: U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF; }
+@font-face { font-family: Literata; font-weight: 700; src: url(fonts/literata-greek-700-normal.woff2); unicode-range: U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF; }
+
+:root {
+  --paper: #0F1B2D; /* hero.SHADOW */
+  --ink: #F4EFE3;
+  --accent: #E9A23B;
+  --link: #9FD3C7;
+  --muted: #8EA3B5;
+  --hairline: #2B3C52;
+}
+
+html, body {
+  margin: 0;
+  width: 1600px;
+  height: 2560px;
+  overflow: hidden;
+  background: var(--paper);
+  font-family: Literata, serif;
+}
+
+.hero {
+  position: absolute;
+  left: 150px;
+  top: 250px;
+  width: 1300px;
+  height: 1340px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.motif { position: absolute; left: 0; top: 0; width: 1600px; height: 2560px; }
+.motif g { stroke: var(--link); stroke-width: 1.6; opacity: 0.28; }
+.motif circle { fill: var(--link); opacity: 0.55; }
+.motif circle.accent { fill: var(--accent); opacity: 0.95; }
+
+.kicker {
+  --fit-max: 34;
+  --fit-min: 22;
+  position: absolute;
+  left: 130px;
+  right: 130px;
+  top: 105px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rule {
+  position: absolute;
+  left: 740px;
+  top: 178px;
+  width: 120px;
+  height: 3px;
+  background: var(--accent);
+  opacity: 0.8;
+}
+
+.title {
+  --fit-max: 96;
+  --fit-min: 48;
+  position: absolute;
+  left: 130px;
+  right: 130px;
+  top: 1600px;
+  height: 620px;
+  margin: 0;
+  display: flex;
+  align-items: flex-end;
+  color: var(--ink);
+  font-weight: 700;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+.authors {
+  --fit-max: 50;
+  --fit-min: 30;
+  position: absolute;
+  left: 130px;
+  right: 130px;
+  top: 2262px;
+  height: 96px;
+  color: var(--ink);
+  font-weight: 400;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.foot {
+  position: absolute;
+  left: 130px;
+  right: 130px;
+  top: 2376px;
+  height: 100px;
+  box-sizing: border-box;
+  padding-top: 30px;
+  border-top: 2px solid var(--hairline);
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  color: var(--muted);
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+}
+
+.citation {
+  --fit-max: 30;
+  --fit-min: 20;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.imprint {
+  --fit-max: 30;
+  --fit-min: 20;
+  flex: none;
+  white-space: nowrap;
+}
