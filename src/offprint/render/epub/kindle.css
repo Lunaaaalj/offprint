@@ -40,6 +40,8 @@ p.reference {
 /* Equations. */
 div.equation { text-align: center; margin: 0.6em 0; }
 div.equation img { max-width: 100%; height: auto; }
+img.math-display { vertical-align: middle; }
+img.math-inline { max-width: 100%; height: auto; }
 span.equation-number { margin-left: 0.6em; }
 code.equation-text { font-family: monospace; font-size: 0.85em; }
 
