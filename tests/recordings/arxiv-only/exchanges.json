@@ -1,0 +1,36 @@
+{
+  "synthetic": false,
+  "recorded": "2026-11-04",
+  "input": "2610.22829",
+  "notes": "Real responses. Email addresses in bodies are replaced; nothing else changed.",
+  "exchanges": [
+    {
+      "method": "GET",
+      "url": "https://export.arxiv.org/api/query?id_list=2610.22829",
+      "status": 200,
+      "headers": {
+        "content-type": "application/atom+xml; charset=utf-8"
+      },
+      "body": "00.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://arxiv.org/e-print/2610.22829",
+      "status": 301,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "location": "/src/2610.22829"
+      },
+      "body": "01.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://arxiv.org/src/2610.22829",
+      "status": 200,
+      "headers": {
+        "content-type": "application/gzip"
+      },
+      "body": "02.body"
+    }
+  ]
+}
