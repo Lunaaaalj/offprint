@@ -54,7 +54,18 @@ The value is the share of source words found. When it's below the threshold, the
 
 ### Sources without evidence
 
-The checks that compare with the source need a `SourceEvidence` (`offprint.extraction`), which an adapter reads from the source apart from the IR. The PDF adapter has `read_evidence`. Without evidence, `coverage.words` and `figure.foreign_caption` are skipped, and the three `counts.*` checks only look at the numbering. A skip never changes the verdict, but the report lists it.
+The checks that compare with the source need a `SourceEvidence` (`offprint.extraction`), which an adapter reads from the source apart from the IR. The PDF and JATS adapters each have a `read_evidence`. Without evidence, `coverage.words` and `figure.foreign_caption` are skipped, and the three `counts.*` checks only look at the numbering. A skip never changes the verdict, but the report lists it.
+
+### Sources without pages
+
+JATS has no pages, so its `SourceEvidence.pages` is `None` and its evidence has no `page` or `bbox`:
+
+- `coverage.words` names the section that lost words instead of the page. A finding like this has no `location`.
+- `counts.*` compare against the article's own labels.
+- `figure.foreign_caption` is skipped, with the reason in `qa.json`. A figure is a file of its own rather than a crop of a page, so it can't take in another caption.
+- `counts.pages` in `qa.json` is null, and `qa.md` doesn't mention pages.
+
+The JATS reader walks the XML on its own, because sharing the mapper's walk would hide what the mapper loses. An element it doesn't know counts as text. It leaves out what the book has as an image (maths, alt text) and the labels the renderer writes itself. Funding and conflict statements in `article-meta` are left out too, because they can repeat a section of `back`, so losing one of those isn't noticed.
 
 ## Score
 
@@ -104,7 +115,7 @@ The score is the share of the checks that ran and passed, from 0 to 1, with a ch
 | `verdict` | `pass` or `review`. |
 | `score` | See above. |
 | `title`, `epub` | The paper's title, and the book's file name (null if none). |
-| `counts` | What the book holds. `pages` is the source's, and null without evidence. `equations` counts numbered ones and `sections` the level-1 headings. |
+| `counts` | What the book holds. `pages` is the source's, and null without evidence or for a source without pages. `equations` counts numbered ones and `sections` the level-1 headings. |
 | `totals` | How many checks ended in each status. |
 | `checks[]` | Every check, always in the same order. |
 | `checks[].status` | `pass`, `warn` (only warnings), `fail` (at least one error) or `skip`. |

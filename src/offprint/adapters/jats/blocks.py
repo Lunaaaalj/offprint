@@ -395,7 +395,7 @@ class BlockMapper:
             self._problem("jats.figure_without_graphic", message)
             self._paragraph(caption, fig)
         for index, graphic in enumerate(graphics, start=1):
-            self._figure_from(graphic, fig, _part(number, index), caption)
+            self._figure_from(graphic, fig, part_number(number, index), caption)
 
     def _figure_from(self, graphic: Element, source: Element, number: str, caption: Runs) -> None:
         asset = self._asset(graphic)
@@ -427,7 +427,7 @@ class BlockMapper:
         if not tables:
             self._table_without_cells(wrap, number, caption)
         for index, table in enumerate(tables, start=1):
-            part = _part(number, index)
+            part = part_number(number, index)
             header, rows = read_table(table, self.problems)
             block = Table(
                 id=f"table-{part}",
@@ -498,7 +498,7 @@ def _bold(runs: Runs) -> Runs:
     return (Bold(runs),) if runs else ()
 
 
-def _part(number: str, index: int) -> str:
+def part_number(number: str, index: int) -> str:
     """Number the second and later images or tables of one float, which the IR needs unique."""
     return number if index == 1 else f"{number}.{index}"
 

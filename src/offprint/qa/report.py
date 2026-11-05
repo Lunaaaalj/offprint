@@ -108,7 +108,7 @@ def to_markdown(report: QaReport) -> str:
     """Write a report that can be read on its own: what failed, where and what to try."""
     totals = _totals(report)
     counts = report.counts
-    pages = "?" if counts.pages is None else counts.pages
+    pages = "" if counts.pages is None else f"The source has {counts.pages} pages. "
     lines = [
         f"# QA report: {report.title or 'Untitled'}",
         "",
@@ -117,7 +117,7 @@ def to_markdown(report: QaReport) -> str:
         f"{totals['fail']} failed, {totals['warn']} with warnings, {totals['skip']} skipped and "
         f"{totals['pass']} passed, out of {len(report.checks)} checks.",
         "",
-        f"The source has {pages} pages. The book has {counts.figures} figures, {counts.tables} "
+        f"{pages}The book has {counts.figures} figures, {counts.tables} "
         f"tables, {counts.equations} numbered equations and {counts.sections} sections.",
         "",
     ]

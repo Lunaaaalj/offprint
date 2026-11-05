@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from offprint.adapters.jats.blocks import BlockMapper, LoadGraphic
+from offprint.adapters.jats.evidence import collect_evidence, read_evidence
 from offprint.adapters.jats.front import read_meta
 from offprint.adapters.jats.graphics import (
     GRAPHICS_DIR,
@@ -80,10 +81,12 @@ __all__ = [
     "JatsResult",
     "MissingGraphicsError",
     "Unreadable",
+    "collect_evidence",
     "convert_jats",
     "graphic_name",
     "graphic_refs",
     "map_article",
     "parse_article",
     "pmc_version",
+    "read_evidence",
 ]
