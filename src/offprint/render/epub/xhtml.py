@@ -17,6 +17,7 @@ from offprint.ir import (
     Italic,
     Link,
     ListItem,
+    MathBox,
     MathInline,
     Paragraph,
     Problem,
@@ -49,6 +50,8 @@ class RenderContext:
     image_href: Callable[[str, bool], str]
     """Return an asset's href, given its id and whether it should be grayscale."""
     problems: list[Problem] = field(default_factory=list)
+    math_boxes: Mapping[str, MathBox] = field(default_factory=dict)
+    """The size of each rendered formula, by asset id."""
 
     def report(self, code: str, message: str, block_id: str | None = None) -> None:
         logger.warning("%s: %s", code, message)
@@ -114,8 +117,8 @@ def _render_run(run: Run, ctx: RenderContext, block_id: str | None, in_link: boo
     match run:
         case Text(text):
             return esc(text)
-        case MathInline(text, latex):
-            return f'<span class="math">{esc(text or latex or "")}</span>'
+        case MathInline(text, latex, asset):
+            return _render_inline_math(text, latex, asset, ctx, block_id)
         case Italic(runs):
             return wrapped("i", runs)
         case Bold(runs):
@@ -133,6 +136,32 @@ def _render_run(run: Run, ctx: RenderContext, block_id: str | None, in_link: boo
         case Cite(target, runs):
             content = render_runs(runs, ctx, block_id, in_link=True)
             return _anchor(ctx.cite_hrefs.get(target), content, in_link)
+
+
+def _render_inline_math(
+    text: str, latex: str | None, asset: str | None, ctx: RenderContext, block_id: str | None
+) -> str:
+    if asset is not None:
+        return _math_image(asset, latex or text, "math-inline", ctx)
+    if latex:
+        ctx.report(
+            "epub.inline_math_text_fallback",
+            f"inline math {latex!r} has no image, so it is shown as text",
+            block_id,
+        )
+    return f'<span class="math">{esc(text or latex or "")}</span>'
+
+
+def _math_image(asset: str, alt: str, css_class: str, ctx: RenderContext) -> str:
+    """An image sized in em, so a formula grows with the reader's type size.
+
+    `vertical-align` drops the image by its depth, which puts its baseline on the line's.
+    """
+    style = ""
+    if box := ctx.math_boxes.get(asset):
+        style = f' style="width:{box.width:.3f}em;vertical-align:{-box.depth:.3f}em"'
+    src = esc(ctx.image_href(asset, True))
+    return f'<img class="{css_class}" src="{src}" alt="{esc(alt)}"{style}/>'
 
 
 def _anchor(url: str | None, content: str, in_link: bool) -> str:
@@ -185,21 +214,20 @@ def _render_paragraph(block: Paragraph, ctx: RenderContext) -> str:
 
 
 def _render_equation(block: Equation, ctx: RenderContext) -> str:
-    label = block.alt or block.latex or ""
     number = ""
     if block.number:
         number = f' <span class="equation-number">({esc(block.number.strip("()"))})</span>'
     if block.asset is not None:
-        src = ctx.image_href(block.asset, True)
-        content = f'<img src="{esc(src)}" alt="{esc(label)}"/>'
+        alt = block.latex or block.alt or ""
+        content = _math_image(block.asset, alt, "math-display", ctx)
     else:
-        # #12 will render these as images. Until then the equation must not disappear.
+        # The equation stage couldn't draw this one, and it must not disappear.
         ctx.report(
             "epub.equation_text_fallback",
             f"equation {block.id!r} has no image, so it is shown as text",
             block.id,
         )
-        content = f'<code class="equation-text">{esc(label)}</code>'
+        content = f'<code class="equation-text">{esc(block.alt or block.latex or "")}</code>'
     return f'<div class="equation" id="{ctx.anchors[block.id]}">{content}{number}</div>'
 
 

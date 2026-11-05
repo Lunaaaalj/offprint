@@ -31,6 +31,7 @@ from offprint.ir import (
     License,
     Link,
     ListItem,
+    MathBox,
     MathInline,
     Meta,
     Paragraph,
@@ -805,3 +806,67 @@ def test_identifier_survives_a_lone_surrogate_in_an_author_name() -> None:
     assert book_identifier(meta, "T") == book_identifier(
         replace(meta, authors=(Author(name="A"),)), "T"
     )
+
+
+# Rendered math
+
+
+def chapter_root(path: Path) -> ElementTree.Element:
+    return Book(path).xml("front-matter.xhtml")
+
+
+MATH_ASSET = Asset(
+    id="m",
+    mime="image/png",
+    bytes=png(mode="LA", color=(0, 255)),
+    box=MathBox(width=2.5, height=1.2, depth=0.35),
+)
+
+
+def test_inline_math_image_sits_on_the_baseline_and_keeps_its_latex(tmp_path):
+    paragraph = Paragraph(id="p", runs=(Text("a "), MathInline("", r"\frac{a}{b}", "m")))
+    result = render_epub(doc_of(paragraph, assets=(MATH_ASSET,)), tmp_path / "b.epub")
+    image = find(chapter_root(result.path), "img")[0]
+    assert image.get("alt") == r"\frac{a}{b}"
+    assert image.get("class") == "math-inline"
+    assert image.get("style") == "width:2.500em;vertical-align:-0.350em"
+    assert result.problems == ()
+
+
+def test_inline_math_image_without_metrics_is_still_shown(tmp_path):
+    paragraph = Paragraph(id="p", runs=(MathInline("x", None, "a"),))
+    doc = doc_of(paragraph, assets=(asset("a", png()),))
+    result = render_epub(doc, tmp_path / "b.epub")
+    image = find(chapter_root(result.path), "img")[0]
+    assert image.get("alt") == "x"
+    assert image.get("style") is None
+
+
+def test_inline_math_without_an_image_is_text_and_reported(tmp_path):
+    paragraph = Paragraph(id="p", runs=(MathInline("", r"\bad"),))
+    result = render_epub(doc_of(paragraph), tmp_path / "b.epub")
+    assert r"\bad" in text_of(chapter_root(result.path))
+    assert [(p.code, p.block_id) for p in result.problems] == [
+        ("epub.inline_math_text_fallback", "p")
+    ]
+
+
+def test_inline_math_that_never_had_latex_is_just_text(tmp_path):
+    paragraph = Paragraph(id="p", runs=(MathInline("x + y"),))
+    assert render_epub(doc_of(paragraph), tmp_path / "b.epub").problems == ()
+
+
+def test_display_math_image_is_sized_in_em_with_the_latex_as_alt(tmp_path):
+    equation = Equation(id="e", alt="a over b", number="2", latex=r"\frac{a}{b}", asset="m")
+    result = render_epub(doc_of(equation, assets=(MATH_ASSET,)), tmp_path / "b.epub")
+    image = find(chapter_root(result.path), "img")[0]
+    assert image.get("alt") == r"\frac{a}{b}"
+    assert image.get("class") == "math-display"
+    assert "width:2.500em" in image.get("style")
+
+
+def test_a_cropped_equation_stays_as_it_was(tmp_path):
+    doc = doc_of(Equation(id="e", alt="E = mc2", asset="a"), assets=(asset("a", png()),))
+    image = find(chapter_root(render_epub(doc, tmp_path / "b.epub").path), "img")[0]
+    assert image.get("alt") == "E = mc2"
+    assert image.get("style") is None

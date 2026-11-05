@@ -132,6 +132,7 @@ def render_epub(
         anchors=anchors,
         cite_hrefs=_cite_hrefs(leading, chapters, anchors),
         image_href=store.href,
+        math_boxes={key: asset.box for key, asset in doc.assets.items() if asset.box},
     )
 
     def finish(name: str, markup: str) -> bytes:
