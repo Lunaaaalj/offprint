@@ -550,7 +550,7 @@ def document_vocabulary(pages: Iterable[PageData]) -> frozenset[str]:
     return vocabulary(pieces)
 
 
-def _hyphen_rule(pages: Iterable[PageData], profile: Profile) -> KeepHyphen:
+def hyphen_rule(pages: Iterable[PageData], profile: Profile) -> KeepHyphen:
     if profile.text.line_end_hyphens == "keep":
         return lambda left, right: True
     return keep_hyphen_from_vocabulary(document_vocabulary(pages))
@@ -591,7 +591,7 @@ def assemble(
     pdf_metadata: dict[str, str],
 ) -> Document:
     """Build the document from extracted pages. All rendering goes through `crop`."""
-    keep_hyphen = _hyphen_rule(pages, profile)
+    keep_hyphen = hyphen_rule(pages, profile)
     elements = [e for page in pages for e in page_elements(page, profile, keep_hyphen)]
     emitter = _Emitter(profile, keep_hyphen, crop)
     for element in join_tables(elements, profile):

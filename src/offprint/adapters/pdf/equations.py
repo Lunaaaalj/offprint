@@ -70,6 +70,11 @@ def is_display_equation(block: TextBlock, column: Column, profile: Profile) -> b
     return centred and first.size >= equations.centred_min_size and equations.centred_marker in text
 
 
+def line_number(line: Line, profile: Profile) -> str | None:
+    """Return the equation number on a line, if it has one."""
+    return _pop_number(line, profile)[0]
+
+
 def _pop_number(line: Line, profile: Profile) -> tuple[str | None, str]:
     """Split a line into its equation number, if it has one, and the rest of its text."""
     equations = profile.equations

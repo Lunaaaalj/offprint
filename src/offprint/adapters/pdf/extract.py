@@ -161,19 +161,39 @@ def _page_alts(page: pymupdf.Page, alts: dict[int, str]) -> tuple[str, ...]:
     return tuple(alts[int(mcid)] for mcid in order if int(mcid) in alts)
 
 
+def _text_blocks(page: pymupdf.Page, number: int, styles: FontStyles) -> tuple[TextBlock, ...]:
+    data = page.get_text("dict", flags=_TEXT_FLAGS)
+    blocks = (_block(block, number, styles) for block in data["blocks"] if block["type"] == 0)
+    return tuple(block for block in blocks if block is not None)
+
+
+def read_text(doc: pymupdf.Document, styles: FontStyles) -> tuple[PageData, ...]:
+    """Read only the pages' text, skipping table detection, which is the slow part."""
+    return tuple(
+        PageData(
+            number=index + 1,
+            width=float(page.rect.width),
+            height=float(page.rect.height),
+            blocks=_text_blocks(page, index + 1, styles),
+            tables=(),
+            graphics=(),
+            figure_alts=(),
+        )
+        for index, page in enumerate(doc)
+    )
+
+
 def read_pages(doc: pymupdf.Document, styles: FontStyles) -> tuple[PageData, ...]:
     alts = _structure_alts(doc)
     pages = []
     for index, page in enumerate(doc):
         number = index + 1
-        data = page.get_text("dict", flags=_TEXT_FLAGS)
-        blocks = (_block(block, number, styles) for block in data["blocks"] if block["type"] == 0)
         pages.append(
             PageData(
                 number=number,
                 width=float(page.rect.width),
                 height=float(page.rect.height),
-                blocks=tuple(block for block in blocks if block is not None),
+                blocks=_text_blocks(page, number, styles),
                 tables=_tables(page, number),
                 graphics=_graphics(page),
                 figure_alts=_page_alts(page, alts.get(page.xref, {})),
