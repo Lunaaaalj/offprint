@@ -1,9 +1,12 @@
 """Shared test helpers."""
 
+import os
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+
+from offprint.browser import BrowserUnavailableError, chromium_page
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -20,3 +23,15 @@ def fixtures() -> Callable[[str], Path]:
         return path
 
     return find
+
+
+@pytest.fixture(scope="session")
+def chromium() -> None:
+    """Skip a test when Chromium is missing locally. In CI that's a failure, not a skip."""
+    try:
+        with chromium_page(16, 16):
+            pass
+    except BrowserUnavailableError as error:
+        if os.environ.get("CI"):
+            pytest.fail(f"Chromium must be installed in CI: {error}")
+        pytest.skip(f"Chromium isn't installed: {error}")
