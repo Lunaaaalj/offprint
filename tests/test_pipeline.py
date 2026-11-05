@@ -24,6 +24,7 @@ from offprint.render.epub import EpubResult
 from offprint.sources import ArxivId, Doi, Resolution, cache, crossref, detect_input
 
 PDF = Path(__file__).parent / "fixtures" / "frontiers-frai-2026-1748985" / "paper.pdf"
+FIXTURE_GRAPHIC = PDF.parent / "graphics" / "frai-09-1748985-g0001.jpg"
 RECORDING = Path(__file__).parent / "recordings" / "fixture-doi"
 DOI = Doi("10.3389/frai.2026.1748985")
 ARXIV = ArxivId("2401.01234")
@@ -201,29 +202,96 @@ def test_an_uncached_identifier_names_the_resolve_command(text: str, no_network:
     assert f"run `offprint resolve {text}`" in result.stderr
 
 
-@pytest.mark.parametrize(("filename", "issue"), [("source.xml", "#10"), ("source.tar.gz", "#11")])
-def test_a_source_without_an_adapter_names_its_issue(
-    filename: str, issue: str, tmp_path: Path
-) -> None:
-    cached_entry(DOI, tmp_path, filename=filename, body=b"source")
+def test_a_source_without_an_adapter_names_its_issue(tmp_path: Path) -> None:
+    cached_entry(DOI, tmp_path, filename="source.tar.gz", body=b"source")
 
     result = run(DOI, "-o", tmp_path / "out")
 
     assert result.exit_code == 1
-    assert issue in result.stderr
+    assert "#11" in result.stderr
     assert not (tmp_path / "out").exists()
 
 
-@pytest.mark.parametrize(("path", "issue"), [("paper.xml", "#10"), ("paper.tar.gz", "#11")])
-def test_a_local_source_without_an_adapter_names_its_issue(
-    path: str, issue: str, tmp_path: Path
-) -> None:
-    (tmp_path / path).write_bytes(b"source")
+def test_a_local_source_without_an_adapter_names_its_issue(tmp_path: Path) -> None:
+    (tmp_path / "paper.tar.gz").write_bytes(b"source")
 
-    result = run(tmp_path / path, "-o", tmp_path / "out")
+    result = run(tmp_path / "paper.tar.gz", "-o", tmp_path / "out")
 
     assert result.exit_code == 1
-    assert issue in result.stderr
+    assert "#11" in result.stderr
+
+
+@pytest.mark.parametrize("cached", [True, False], ids=["cached", "local"])
+def test_a_jats_file_that_cant_be_read_says_why(cached: bool, tmp_path: Path) -> None:
+    if cached:
+        cached_entry(DOI, tmp_path, filename="source.xml", body=b"not xml")
+        source: str | Path = DOI
+    else:
+        source = tmp_path / "paper.xml"
+        source.write_bytes(b"not xml")
+
+    result = run(source, "-o", tmp_path / "out", "--no-cover")
+
+    assert result.exit_code == 1
+    assert "well-formed" in result.stderr
+    assert not (tmp_path / "out").exists()
+
+
+JATS_WITH_FIGURE = b"""<article xmlns:xlink="http://www.w3.org/1999/xlink"><body>
+<fig><label>Figure 1</label><graphic xlink:href="fig1.jpg"/></fig></body></article>"""
+JATS_WITH_UNKNOWN = b"""<article><body><sec><title>One</title>
+<wobble>Text</wobble></sec></body></article>"""
+
+
+def test_a_missing_graphic_stops_the_book_and_says_what_to_do(tmp_path: Path) -> None:
+    cached_entry(DOI, tmp_path, filename="source.xml", body=JATS_WITH_FIGURE)
+
+    result = run(DOI, "-o", tmp_path / "out", "--no-cover")
+
+    assert result.exit_code == 1
+    assert "jats.graphic_missing" in result.stderr
+    assert "fig1.jpg" in result.stderr
+    assert "--refresh" in result.stderr
+    assert not (tmp_path / "out").exists()
+
+
+def test_a_graphic_that_isnt_an_image_stops_the_book(tmp_path: Path) -> None:
+    (tmp_path / "paper.xml").write_bytes(JATS_WITH_FIGURE)
+    (tmp_path / "fig1.jpg").write_bytes(b"<html>a login page</html>")
+
+    result = run(tmp_path / "paper.xml", "-o", tmp_path / "out", "--no-cover")
+
+    assert result.exit_code == 1
+    assert "jats.graphic_unreadable" in result.stderr
+
+
+@pytest.mark.parametrize("folder", ["graphics", "."], ids=["graphics-folder", "beside-the-xml"])
+def test_a_local_files_graphics_are_found(folder: str, tmp_path: Path) -> None:
+    (tmp_path / "paper.xml").write_bytes(JATS_WITH_FIGURE)
+    (tmp_path / folder).mkdir(exist_ok=True)
+    shutil.copy(FIXTURE_GRAPHIC, tmp_path / folder / "fig1.jpg")
+
+    result = run(tmp_path / "paper.xml", "-o", tmp_path / "out", "--no-cover")
+
+    assert result.exit_code == 0, result.output
+
+
+def test_what_the_adapter_couldnt_map_is_printed(tmp_path: Path) -> None:
+    (tmp_path / "paper.xml").write_bytes(JATS_WITH_UNKNOWN)
+
+    result = run(tmp_path / "paper.xml", "-o", tmp_path / "out", "--no-cover")
+
+    assert result.exit_code == 0, result.output
+    assert "jats.unmapped_element" in result.stderr
+
+
+def test_the_resolvers_metadata_reaches_a_jats_book(tmp_path: Path) -> None:
+    cached_entry(DOI, tmp_path, filename="source.xml", body=JATS_WITH_UNKNOWN, meta=RESOLVED)
+
+    result = convert_to_epub(str(DOI), tmp_path / "out", cover=False)
+
+    with zipfile.ZipFile(result.path) as book:
+        assert "Registry title" in book.read("OEBPS/content.opf").decode()
 
 
 def test_a_damaged_cache_entry_says_how_to_recover(tmp_path: Path) -> None:
