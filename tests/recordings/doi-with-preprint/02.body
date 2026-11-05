@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/RfHb7oQ0T+HITb8oPmUynZuctNg</id>
+  <title>arXiv Query: search_query=doi:"10.1007/s00022-025-00782-5"&amp;id_list=&amp;start=0&amp;max_results=5</title>
+  <updated>2026-11-05T00:18:11Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=doi:%2210.1007/s00022-025-00782-5%22&amp;start=0&amp;max_results=5&amp;id_list=" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>5</opensearch:itemsPerPage>
+  <opensearch:totalResults>1</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/2509.10460v2</id>
+    <title>Cycling along Euler road</title>
+    <updated>2025-11-06T14:19:55Z</updated>
+    <link href="https://arxiv.org/abs/2509.10460v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2509.10460v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>We introduce the notion of $P_λ$ points, which canonically parametrize points on the Euler line. This allows us to show that the Euler line of any $d$-dimensional inscribed polygon in Euclidean space arises from the Euler lines of its sub-polygons, beginning from the Euler line of a point in the plane. Furthermore, we situate $P_λ$ points in the literature of modern triangle centers.</summary>
+    <category term="math.MG" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="math.HO" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-08-04T14:11:06Z</published>
+    <arxiv:comment>7 pages, 2 figures</arxiv:comment>
+    <arxiv:primary_category term="math.MG"/>
+    <author>
+      <name>Dylan Wyrzykowski</name>
+    </author>
+    <arxiv:doi>10.1007/s00022-025-00782-5</arxiv:doi>
+    <link rel="related" href="https://doi.org/10.1007/s00022-025-00782-5" title="doi"/>
+  </entry>
+</feed>

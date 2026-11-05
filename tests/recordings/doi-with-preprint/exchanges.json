@@ -1,0 +1,63 @@
+{
+  "synthetic": false,
+  "recorded": "2026-11-04",
+  "input": "10.1007/s00022-025-00782-5",
+  "notes": "Real responses. Email addresses in bodies are replaced; nothing else changed.",
+  "exchanges": [
+    {
+      "method": "GET",
+      "url": "https://api.crossref.org/works/10.1007%2Fs00022-025-00782-5",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "00.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.unpaywall.org/v2/10.1007%2Fs00022-025-00782-5?email=offprint-tests%40example.com",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "01.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://export.arxiv.org/api/query?search_query=doi%3A%2210.1007%2Fs00022-025-00782-5%22&max_results=5",
+      "status": 200,
+      "headers": {
+        "content-type": "application/atom+xml; charset=utf-8"
+      },
+      "body": "02.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI%3A%2210.1007%2Fs00022-025-00782-5%22&format=json&resultType=lite",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json;charset=UTF-8"
+      },
+      "body": "03.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://arxiv.org/e-print/2509.10460",
+      "status": 301,
+      "headers": {
+        "location": "/src/2509.10460",
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "04.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://arxiv.org/src/2509.10460",
+      "status": 200,
+      "headers": {
+        "content-type": "application/gzip"
+      },
+      "body": "05.body"
+    }
+  ]
+}

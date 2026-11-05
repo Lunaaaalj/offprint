@@ -1,0 +1,44 @@
+{
+  "synthetic": false,
+  "recorded": "2026-11-04",
+  "input": "10.3389/frai.2026.0000000",
+  "notes": "Real responses. Email addresses in bodies are replaced; nothing else changed.",
+  "exchanges": [
+    {
+      "method": "GET",
+      "url": "https://api.crossref.org/works/10.3389%2Ffrai.2026.0000000",
+      "status": 404,
+      "headers": {
+        "content-type": "text/plain"
+      },
+      "body": "00.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://api.unpaywall.org/v2/10.3389%2Ffrai.2026.0000000?email=offprint-tests%40example.com",
+      "status": 422,
+      "headers": {
+        "content-type": "application/json"
+      },
+      "body": "01.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://export.arxiv.org/api/query?search_query=doi%3A%2210.3389%2Ffrai.2026.0000000%22&max_results=5",
+      "status": 200,
+      "headers": {
+        "content-type": "application/atom+xml; charset=utf-8"
+      },
+      "body": "02.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI%3A%2210.3389%2Ffrai.2026.0000000%22&format=json&resultType=lite",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json;charset=UTF-8"
+      },
+      "body": "03.body"
+    }
+  ]
+}
