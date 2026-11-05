@@ -493,7 +493,7 @@ LATEX_DOC = Document(
 def test_convert_renders_latex_and_reports_what_it_could_not(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr(pipeline, "_read_document", lambda _resolution: LATEX_DOC)
+    monkeypatch.setattr(pipeline, "_read_document", lambda _resolution: (LATEX_DOC, ()))
     result = convert_to_epub(str(PDF), tmp_path, cover=False)
     codes = [(problem.code, problem.block_id) for problem in result.problems]
     assert codes == [("math.render_failed", "bad"), ("epub.equation_text_fallback", "bad")]

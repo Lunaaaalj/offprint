@@ -100,7 +100,13 @@ CHECKS: tuple[Check, ...] = (
     Check(
         "epub.equation_text_fallback",
         "warn",
-        "This equation reads as plain text in the book, which is hard to read (#12).",
+        "This equation reads as plain text in the book, which is hard to read. Look for a "
+        "`math.*` finding that says why.",
+    ),
+    Check(
+        "epub.inline_math_text_fallback",
+        "warn",
+        "This inline formula reads as plain text in the book, which is hard to read.",
     ),
     Check("epub.link_dropped", "warn", "Only the link's text is in the book. Check its target."),
     Check(
@@ -144,6 +150,35 @@ CHECKS: tuple[Check, ...] = (
         "warn",
         "The article has no `article-meta`. Run `offprint resolve` so the registry can fill the "
         "metadata.",
+    ),
+    Check(
+        "math.renderer_unavailable",
+        "error",
+        "Chromium couldn't start, so no LaTeX was typeset and every such equation is plain text. "
+        "Run `uv run playwright install chromium`.",
+    ),
+    Check(
+        "math.preamble_failed",
+        "error",
+        "The paper's macros didn't load, so formulas that use them may be wrong. Check the "
+        "preamble the adapter passed.",
+    ),
+    Check(
+        "math.render_failed",
+        "warn",
+        "MathJax rejected this LaTeX, so the equation stays as text. Check the source's LaTeX.",
+    ),
+    Check(
+        "math.system_font",
+        "warn",
+        "A symbol isn't in MathJax's fonts, so it was drawn from a system font and may differ "
+        "between machines.",
+    ),
+    Check(
+        "math.cache_unwritable",
+        "warn",
+        "Rendered equations weren't cached, so the next conversion repeats the work. Check "
+        "OFFPRINT_CACHE_DIR.",
     ),
     Check("cover.overflow", "error", "Text left the cover, so the conversion stopped."),
     Check("cover.contrast", "error", "Text on the cover is too faint, so the conversion stopped."),
