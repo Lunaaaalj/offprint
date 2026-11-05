@@ -43,11 +43,15 @@ def readable_texts(doc: Document, evidence: SourceEvidence) -> list[SourceText]:
     images = _image_boxes(doc)
 
     def in_image(item: SourceText) -> bool:
+        if item.page is None or item.bbox is None:
+            return False
         point = centre(item.bbox)
         if not any(contains_point(box, point) for box in images.get(item.page, ())):
             return False
         return not any(
-            caption.page == item.page and contains_point(caption.bbox, point)
+            caption.page == item.page
+            and caption.bbox is not None
+            and contains_point(caption.bbox, point)
             for caption in evidence.captions
         )
 
@@ -67,22 +71,31 @@ def _unplaced(words: Sequence[str], pairs: Set[tuple[str, str]], book: Set[str])
     return [word for word, *near in zip(words, left, right, strict=True) if not any(near)]
 
 
+def _place(item: SourceText) -> int | str:
+    """Where a piece of text is: its page, or its section in a source without pages."""
+    return item.page if item.page is not None else item.section or "the source"
+
+
 def _findings(
-    missing: Mapping[int, Sequence[str]], lost: int, total: int, config: QaConfig
+    missing: Mapping[int | str, Sequence[str]], lost: int, total: int, config: QaConfig
 ) -> tuple[Finding, ...]:
     severity = BY_ID["coverage.words"].severity
-    worst = sorted(missing, key=lambda page: (-len(missing[page]), page))[: config.worst_pages]
+    # The sort is stable, so places with as many missing words stay in reading order.
+    worst = sorted(missing, key=lambda place: -len(missing[place]))[: config.worst_pages]
+
+    def message(place: int | str) -> str:
+        where = "here" if isinstance(place, int) else f"in {place!r}"
+        sample = ", ".join(dict.fromkeys(missing[place][:_SAMPLE]))
+        return f"{len(missing[place])} words {where} aren't in the book: {sample}"
+
     pages = tuple(
         Finding(
             check="coverage.words",
-            message=(
-                f"{len(missing[page])} words here aren't in the book: "
-                + ", ".join(dict.fromkeys(missing[page][:_SAMPLE]))
-            ),
+            message=message(place),
             severity=severity,
-            page=page,
+            page=place if isinstance(place, int) else None,
         )
-        for page in worst
+        for place in worst
     )
     overall = Finding(
         check="coverage.words",
@@ -103,7 +116,7 @@ def word_coverage(
 
     total = 0
     lost = 0
-    missing: dict[int, list[str]] = {}
+    missing: dict[int | str, list[str]] = {}
     for item in readable_texts(doc, evidence):
         words = word_list(item.text, config.min_word_letters)
         total += len(words)
@@ -113,7 +126,7 @@ def word_coverage(
             else:
                 lost += 1
         if unplaced := _unplaced(words, pairs, known):
-            missing.setdefault(item.page, []).extend(unplaced)
+            missing.setdefault(_place(item), []).extend(unplaced)
 
     value = (total - lost) / total if total else 1.0
     failed = value < config.coverage_threshold

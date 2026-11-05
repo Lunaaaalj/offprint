@@ -58,19 +58,23 @@ class ExtractedTable:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SourceText:
-    """A piece of the source's reading text, with its line breaks already undone."""
+    """A piece of the source's reading text, with its line breaks already undone.
+
+    A source without pages has neither `page` nor `bbox`, and says which `section` it's from.
+    """
 
     text: str
-    page: int
-    bbox: BBox
+    page: int | None = None
+    bbox: BBox | None = None
+    section: str | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SourceCaption:
     kind: Literal["figure", "table"]
     number: str
-    page: int
-    bbox: BBox
+    page: int | None = None
+    bbox: BBox | None = None
     continued: bool = False
     """It's the "(Continued)" caption of a table's later piece, so it isn't a new table."""
 
@@ -78,15 +82,18 @@ class SourceCaption:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SourceEquation:
     number: str
-    page: int
-    bbox: BBox
+    page: int | None = None
+    bbox: BBox | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SourceEvidence:
-    """What the source itself shows, read apart from the IR, for the QA gate to compare against."""
+    """What the source itself shows, read apart from the IR, for the QA gate to compare against.
 
-    pages: int
+    `pages` is `None` for a source that has none, such as JATS.
+    """
+
+    pages: int | None
     texts: tuple[SourceText, ...]
     captions: tuple[SourceCaption, ...]
     equations: tuple[SourceEquation, ...]

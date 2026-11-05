@@ -14,6 +14,7 @@ from offprint.qa.model import Finding, Outcome
 from offprint.render.epub import FRONT_MATTER_LOCATION
 
 _NO_SOURCE = "nothing to compare with: no evidence was read from this source"
+_NO_PAGES = "this source has no pages, so its figures aren't crops that could take in a caption"
 
 
 def finding(check: str, message: str, **where: object) -> Finding:
@@ -57,7 +58,7 @@ def _count_outcome(
     check: str,
     label: str,
     numbers: Sequence[tuple[str, str]],
-    source: Sequence[tuple[str, int, BBox]] | None,
+    source: Sequence[tuple[str, int | None, BBox | None]] | None,
 ) -> Outcome:
     """Compare a kind's blocks with what the source shows, and check their numbering."""
     found = _sequence_findings(check, label, numbers)
@@ -77,7 +78,7 @@ def _count_outcome(
 
 def _caption_places(
     evidence: SourceEvidence | None, kind: str
-) -> list[tuple[str, int, BBox]] | None:
+) -> list[tuple[str, int | None, BBox | None]] | None:
     if evidence is None:
         return None
     return [
@@ -137,6 +138,8 @@ def table_ref_rows(doc: Document, config: QaConfig) -> Outcome:
 
 
 def _is_inside(caption: SourceCaption, box: BBox, config: QaConfig) -> bool:
+    if caption.bbox is None:
+        return False
     shared = intersection_area(caption.bbox, box)
     return shared > 0 and shared >= config.foreign_caption_overlap * area(caption.bbox)
 
@@ -151,6 +154,8 @@ def figure_foreign_caption(
     """
     if evidence is None:
         return Outcome(skipped=_NO_SOURCE)
+    if evidence.pages is None:
+        return Outcome(skipped=_NO_PAGES)
     found = []
     for block in doc.blocks:
         place = doc.provenance.get(block.id)

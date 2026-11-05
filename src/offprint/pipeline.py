@@ -11,6 +11,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from offprint.adapters.jats import JatsError, convert_jats
+from offprint.adapters.jats import read_evidence as read_jats_evidence
 from offprint.adapters.pdf import (
     LayoutError,
     NoProfileMatch,
@@ -136,11 +137,13 @@ def _read_document(resolution: Resolution) -> tuple[Document, tuple[Problem, ...
 
 def _read_evidence(resolution: Resolution) -> SourceEvidence | None:
     """Read what the gate compares with. A source without any has its checks skipped, not failed."""
-    if resolution.tier != "pdf" or resolution.path is None:
+    if resolution.path is None:
         return None
     try:
-        return read_evidence(resolution.path)
-    except (NoProfileMatch, UnreadablePdfError):
+        if resolution.tier == "jats":
+            return read_jats_evidence(resolution.path)
+        return read_evidence(resolution.path) if resolution.tier == "pdf" else None
+    except (JatsError, NoProfileMatch, UnreadablePdfError):
         return None
 
 
