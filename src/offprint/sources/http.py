@@ -20,11 +20,12 @@ MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024
 _TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 _MAX_REDIRECTS = 5
 _DEFAULT_INTERVAL = 1.0
-# Seconds between requests to one host, for hosts that publish a limit.
+# Seconds between requests to one host, for hosts with a published limit or built for bulk.
 _HOST_INTERVALS = {
     "export.arxiv.org": 3.0,  # arXiv API terms: one request every three seconds.
     "arxiv.org": 3.0,
     "api.crossref.org": 0.2,
+    "pmc-oa-opendata.s3.amazonaws.com": 0.1,  # A static bucket: a paper can have dozens of figures.
 }
 
 

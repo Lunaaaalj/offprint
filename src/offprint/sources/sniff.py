@@ -14,6 +14,7 @@ _TAR_BLOCK = 512
 _PROLOGUE = re.compile(rb"\s*(?:(?:<\?.*?\?>|<!--.*?-->|<!DOCTYPE[^>]*>)\s*)*", re.DOTALL)
 _JATS_ROOT = re.compile(rb"<(?:article|pmc-articleset)[\s>]")
 _BODY = re.compile(rb"<body[\s>/]")
+_IMAGE_SIGNATURES = (b"\xff\xd8\xff", b"\x89PNG\r\n\x1a\n", b"GIF8", b"II*\x00", b"MM\x00*")
 
 type EprintKind = Literal["tar.gz", "tar", "tex.gz", "pdf", "unknown"]
 
@@ -49,6 +50,11 @@ def is_jats(body: bytes) -> bool:
 
 def is_pdf(body: bytes) -> bool:
     return body.startswith(b"%PDF-")
+
+
+def is_image(body: bytes) -> bool:
+    """True for the formats publishers use for figures. A 200 can still be a login page."""
+    return body.startswith(_IMAGE_SIGNATURES)
 
 
 def _is_tar(data: bytes) -> bool:

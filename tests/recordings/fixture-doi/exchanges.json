@@ -57,6 +57,231 @@
         "content-type": "text/xml; charset=UTF-8"
       },
       "body": "05.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/PMC13223030.1.json",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "06.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0001.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "07.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0002.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "08.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0003.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "09.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0004.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "10.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0005.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "11.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0006.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "12.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0007.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "13.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0008.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "14.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0009.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "15.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0010.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "16.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0011.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "17.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0012.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "18.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0013.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "19.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0014.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "20.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0015.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "21.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0016.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "22.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0017.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "23.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0018.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "24.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0019.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "25.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0020.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "26.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0021.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "27.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0022.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "28.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0023.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "29.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13223030.1/frai-09-1748985-g0024.jpg",
+      "status": 200,
+      "headers": {
+        "content-type": "binary/octet-stream"
+      },
+      "body": "30.body"
     }
   ]
 }

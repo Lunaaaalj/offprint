@@ -9,11 +9,14 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import tempfile
+from collections.abc import Mapping
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 
+from offprint.adapters.jats import GRAPHICS_DIR, graphic_name
 from offprint.ir import Document, IRFormatError, Meta, from_json, to_json
 from offprint.sources.errors import CacheError
 from offprint.sources.identify import ArxivId, Doi
@@ -49,15 +52,32 @@ def entry_dir(root: Path, target: Doi | ArxivId) -> Path:
 
 
 def store(
-    root: Path, target: Doi | ArxivId, resolution: Resolution, filename: str, body: bytes
+    root: Path,
+    target: Doi | ArxivId,
+    resolution: Resolution,
+    filename: str,
+    body: bytes,
+    graphics: Mapping[str, bytes] | None = None,
 ) -> Resolution:
-    """Save a resolved source, the manifest last so a crash leaves no half-valid entry."""
+    """Save a resolved source, the manifest last so a crash leaves no half-valid entry.
+
+    `graphics` are a JATS article's images, by file name. They replace any stored before.
+    """
     if filename not in SOURCE_FILES:
         raise CacheError(f"refusing to cache a source named {filename!r}")
+    graphics = graphics or {}
+    for name in graphics:
+        if graphic_name(name) is None:
+            raise CacheError(f"refusing to cache a graphic named {name!r}")
     entry = entry_dir(root, target)
     entry.mkdir(parents=True, exist_ok=True)
     _write_atomic(entry / filename, body)
-    manifest = _manifest(resolution, filename, body, root)
+    shutil.rmtree(entry / GRAPHICS_DIR, ignore_errors=True)
+    if graphics:
+        (entry / GRAPHICS_DIR).mkdir()
+    for name, data in graphics.items():
+        _write_atomic(entry / GRAPHICS_DIR / name, data)
+    manifest = _manifest(resolution, filename, body, root, graphics)
     text = json.dumps(manifest, ensure_ascii=False, indent=2)
     _write_atomic(entry / MANIFEST_NAME, text.encode("utf-8"))
     return replace(resolution, path=entry / filename)
@@ -83,6 +103,7 @@ def load(root: Path, target: Doi | ArxivId) -> Resolution | None:
         path = entry / filename
         if _sha256(path.read_bytes()) != manifest["sha256"]:
             raise CacheError(_broken(entry, f"{filename} doesn't match its checksum"))
+        _check_graphics(entry, manifest.get("graphics", {}))
         return Resolution(
             input=manifest["input"],
             attempts=tuple(Attempt(**item) for item in manifest["attempts"]),
@@ -98,8 +119,20 @@ def load(root: Path, target: Doi | ArxivId) -> Resolution | None:
         raise CacheError(_broken(entry, f"bad manifest ({error})")) from error
 
 
+def _check_graphics(entry: Path, graphics: Mapping[str, str]) -> None:
+    for name, digest in graphics.items():
+        if graphic_name(name) is None:
+            raise CacheError(_broken(entry, f"bad graphic name {name!r}"))
+        if _sha256((entry / GRAPHICS_DIR / name).read_bytes()) != digest:
+            raise CacheError(_broken(entry, f"{name} doesn't match its checksum"))
+
+
 def _manifest(
-    resolution: Resolution, filename: str, body: bytes, assets_dir: Path
+    resolution: Resolution,
+    filename: str,
+    body: bytes,
+    assets_dir: Path,
+    graphics: Mapping[str, bytes],
 ) -> dict[str, Any]:
     return {
         "manifest_version": MANIFEST_VERSION,
@@ -107,6 +140,7 @@ def _manifest(
         "tier": resolution.tier,
         "file": filename,
         "sha256": _sha256(body),
+        "graphics": {name: _sha256(data) for name, data in graphics.items()},
         "attempts": [asdict(attempt) for attempt in resolution.attempts],
         "lookups": [asdict(lookup) for lookup in resolution.lookups],
         "meta": _encode_meta(resolution.meta, assets_dir),

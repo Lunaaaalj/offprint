@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from offprint.ir import Meta, SourceTier
-from offprint.sources import arxiv, cache, crossref, pmc, sniff, unpaywall
+from offprint.sources import arxiv, cache, crossref, graphics, pmc, sniff, unpaywall
 from offprint.sources.config import Config, load_config
 from offprint.sources.errors import FetchError, InputError, NotResolvedError
 from offprint.sources.http import Http
@@ -164,8 +164,12 @@ def _resolve_remote(target: Doi | ArxivId, config: Config, http: Http) -> Resolu
     if fetched is None:
         return Resolution(str(target), tuple(attempts), tuple(lookups), meta)
     meta = dataclasses.replace(meta, source_tier=fetched.tier) if meta else None
+    images: dict[str, bytes] = {}
+    if fetched.tier == "jats":
+        images, lookup = graphics.fetch_graphics(fetched.body, http)
+        lookups += [lookup] if lookup else []
     resolution = Resolution(str(target), tuple(attempts), tuple(lookups), meta, tier=fetched.tier)
-    return cache.store(config.cache_dir, target, resolution, fetched.filename, fetched.body)
+    return cache.store(config.cache_dir, target, resolution, fetched.filename, fetched.body, images)
 
 
 def _doi_from(value: str | None) -> Doi | None:
