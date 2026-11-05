@@ -25,6 +25,21 @@ def _not_implemented(command: str, issues: str) -> NoReturn:
     raise typer.Exit(code=1)
 
 
+def _emit_ir(source: Path, outdir: Path) -> None:
+    # Imported here so that `--version` and `--help` don't pay for loading PyMuPDF.
+    from offprint.adapters.pdf import LayoutError, NoProfileMatch, emit_ir
+
+    if not source.is_file():
+        typer.echo(f"offprint convert: no such file: {source}", err=True)
+        raise typer.Exit(code=1)
+    try:
+        target = emit_ir(source, outdir)
+    except (LayoutError, NoProfileMatch) as error:
+        typer.echo(f"offprint convert: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    typer.echo(target)
+
+
 @app.callback()
 def main(
     version: Annotated[
@@ -47,8 +62,14 @@ def convert(
     outdir: Annotated[
         Path, typer.Option("--output", "-o", metavar="OUTDIR", help="Where to write the EPUB.")
     ] = Path("."),
+    emit_ir: Annotated[
+        bool, typer.Option("--emit-ir", help="Write the IR as JSON instead of an EPUB.")
+    ] = False,
 ) -> None:
     """Convert a paper into an EPUB."""
+    if emit_ir:
+        _emit_ir(Path(source), outdir)
+        return
     _not_implemented("convert", "#3 and #5")
 
 
