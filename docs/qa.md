@@ -119,7 +119,7 @@ The score is the share of the checks that ran and passed, from 0 to 1, with a ch
 - `file` is relative to the OPF, like the book's own links: `chapter-05.xhtml`.
 - `fragment` is an element id in that file, or null, meaning the file as a whole. Paragraphs and list items have no id, so theirs is the nearest id before them. A finding with only a source page points to the first block read from that page.
 
-`offprint preview` uses `location` to render the pages behind every finding and labels each one with its check ids.
+`offprint preview` uses `location` to render the pages behind every finding and labels each one with its check ids. It also adds a "Preview" section to `qa.md` that links them (see [preview.md](preview.md)). `qa.json` stays as `convert` wrote it.
 
 ## Adding a check
 

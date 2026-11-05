@@ -1,0 +1,27 @@
+/* Paginate a chapter with CSS columns: each column is one page, and moving the body turns it. */
+
+html { margin: 0; padding: 0; background: #fff; overflow: hidden; }
+
+body {
+  font-family: Literata, serif !important;
+  font-size: ${font_size}px;
+  color: #000;
+  margin: 0 !important;
+  padding: 0;
+  position: absolute;
+  top: ${top_bar}px;
+  left: ${margin}px;
+  width: ${text_width}px;
+  height: ${text_height}px;
+  column-width: ${text_width}px;
+  column-gap: ${gap}px;
+  column-fill: auto;
+}
+
+img { max-height: ${image_height}px; }
+
+.preview-bar {
+  position: fixed;
+  font: 11px Literata, serif;
+  color: #444;
+}

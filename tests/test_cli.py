@@ -16,8 +16,8 @@ def test_version() -> None:
     assert result.stdout.strip() == f"offprint {version('offprint')}"
 
 
-def test_preview_is_not_implemented_yet() -> None:
+def test_preview_of_a_missing_file_fails_clearly() -> None:
     result = runner.invoke(app, ["preview", "paper.epub"])
 
     assert result.exit_code == 1
-    assert "offprint preview: not implemented" in result.stderr
+    assert "offprint preview: no such file" in result.stderr

@@ -98,6 +98,7 @@ Each item is a [GitHub issue](../../issues).
 offprint convert paper.pdf -o build/       # → build/paper.epub
 offprint resolve 10.3389/frai.2026.1748985 # find the best source and cache it
 offprint convert 10.3389/frai.2026.1748985 # → 10.3389_frai.2026.1748985.epub, from the cache
+offprint preview build/paper.epub          # → Kindle-sized PNGs in build/paper.preview/
 ```
 
 `convert` never uses the network. INPUT is a local PDF, or a DOI or arXiv id that `resolve` has already cached; an uncached identifier fails and tells you to run `resolve`. If the best cached source is LaTeX or JATS, `convert` fails and names the missing adapter (#11, #10) rather than quietly using a worse source.
@@ -126,13 +127,14 @@ When the resolver has metadata for the paper, it's combined with what the adapte
 | `OFFPRINT_CONFIG_FILE` | The config file (default: `~/.config/offprint/config.toml`). |
 | `OFFPRINT_CACHE_DIR` | The cache (default: `~/.cache/offprint/`). `convert` reads it too. |
 
-The cover needs Chromium: `uv run playwright install chromium`.
+The cover and `preview` need Chromium: `uv run playwright install chromium`.
+
+`offprint preview EPUB` renders the first page, the first page with a figure, an equation and a table, and every page a QA check flagged, as PNGs plus a contact sheet, in about 2 seconds. It's an approximation of a Kindle. See [`docs/preview.md`](docs/preview.md).
 
 Planned:
 
 ```sh
 offprint convert 2401.01234 --send         # convert and email to your Kindle
-offprint preview paper.epub                # Kindle-sized screenshots
 offprint watch --zotero-collection "→ Kindle"
 ```
 
@@ -164,8 +166,6 @@ uv run pytest                # tests
 uv run ruff check . && uv run ruff format --check .
 uv run offprint --version
 ```
-
-`offprint preview` exists but exits with a "not implemented" message until #7 lands.
 
 ## Fixtures and licensing
 
