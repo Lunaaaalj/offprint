@@ -20,7 +20,7 @@ from typing import Any
 
 import httpx
 
-from offprint.sources import Config, resolve
+from offprint.sources import Config, resolve, sniff
 from offprint.sources.http import Http
 
 PLACEHOLDER_CONTACT = "offprint-tests@example.com"
@@ -70,6 +70,8 @@ class Recorder(httpx.BaseTransport):
 
 
 def _scrub(body: bytes) -> bytes:
+    if sniff.is_image(body):  # Compressed bytes can look like an address, and hold none.
+        return body
     if body.startswith(b"\x1f\x8b"):
         return _scrub_gzip(body)
     return _EMAIL.sub(_replace_email, body)
