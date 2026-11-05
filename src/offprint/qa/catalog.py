@@ -106,6 +106,45 @@ CHECKS: tuple[Check, ...] = (
     Check(
         "epub.asset_converted", "warn", "A figure wasn't PNG or JPEG. Check that it still reads."
     ),
+    Check(
+        "jats.unmapped_element",
+        "error",
+        "The article has something with no mapping, and a sub-article isn't converted at all. "
+        "Check that nothing the reader needs is missing.",
+    ),
+    Check(
+        "jats.figure_without_graphic",
+        "error",
+        "The source has a figure with no image, so the book only has its caption.",
+    ),
+    Check("jats.empty_formula", "error", "The source has an equation with nothing in it."),
+    Check("jats.unmapped_inline", "warn", "An inline element has no mapping. Its text is kept."),
+    Check(
+        "jats.math_fallback",
+        "warn",
+        "Part of an equation couldn't become LaTeX, so it reads as plain text.",
+    ),
+    Check(
+        "jats.inline_graphic",
+        "warn",
+        "The IR has no inline images, so alt text or `[image]` stands in for this one.",
+    ),
+    Check(
+        "jats.table_as_figure",
+        "warn",
+        "This table is only an image in the source, so the reader can't reflow it.",
+    ),
+    Check(
+        "jats.license_unknown",
+        "warn",
+        "The license has no Creative Commons URL, so it was left out rather than guessed.",
+    ),
+    Check(
+        "jats.no_front",
+        "warn",
+        "The article has no `article-meta`. Run `offprint resolve` so the registry can fill the "
+        "metadata.",
+    ),
     Check("cover.overflow", "error", "Text left the cover, so the conversion stopped."),
     Check("cover.contrast", "error", "Text on the cover is too faint, so the conversion stopped."),
 )

@@ -88,6 +88,20 @@ def test_check_ids_are_unique() -> None:
     assert len(ids) == len(set(ids))
 
 
+def test_every_problem_code_in_the_source_is_a_check() -> None:
+    """The gate raises on a code it doesn't know, so an unlisted one would crash `convert`."""
+    root = Path(__file__).parent.parent / "src" / "offprint"
+    sources = [path for path in root.rglob("*.py") if root / "qa" not in path.parents]
+    codes = {
+        code
+        for path in sources
+        for code in re.findall(r"\"((?:epub|jats|math)\.[a-z_]+)\"", path.read_text())
+    }
+
+    assert "jats.no_front" in codes
+    assert codes <= {check.id for check in CHECKS}
+
+
 def test_every_code_the_other_stages_document_is_a_check() -> None:
     ids = {check.id for check in CHECKS}
     root = Path(__file__).parent.parent

@@ -32,7 +32,8 @@ _IR_CODES = (
     "heading.level",
     "heading.jump",
 )
-_EPUB_CODES = tuple(check.id for check in CHECKS if check.id.startswith("epub."))
+# Problems the adapter and the renderer reported, which `EpubResult.problems` carries.
+_CONVERSION_CODES = tuple(check.id for check in CHECKS if check.id.startswith(("epub.", "jats.")))
 _COVER_CODES = tuple(check.id for check in CHECKS if check.id.startswith("cover."))
 
 
@@ -86,7 +87,7 @@ def _outcomes(
         "figure.foreign_caption": checks.figure_foreign_caption(doc, evidence, config),
         "meta.required": checks.meta_required(doc),
         **checks.problem_outcomes(validate(doc), _IR_CODES),
-        **checks.problem_outcomes(epub.problems if epub else (), _EPUB_CODES),
+        **checks.problem_outcomes(epub.problems if epub else (), _CONVERSION_CODES),
         # A cover that fails these stops the conversion, so one that exists has passed them.
         **dict.fromkeys(_COVER_CODES, cover_outcome),
     }
