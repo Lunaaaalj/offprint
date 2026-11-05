@@ -5,7 +5,7 @@ from typing import Annotated, NoReturn
 
 import typer
 
-from offprint import __version__
+from offprint import __version__, sources
 
 app = typer.Typer(
     add_completion=False,
@@ -79,3 +79,23 @@ def preview(
 ) -> None:
     """Render Kindle-sized page previews of an EPUB."""
     _not_implemented("preview", "#7")
+
+
+@app.command()
+def resolve(
+    source: Annotated[
+        str, typer.Argument(metavar="ID", help="A DOI, an arXiv id or URL, or a local file.")
+    ],
+    refresh: Annotated[
+        bool, typer.Option("--refresh", help="Look everything up again, ignoring the cache.")
+    ] = False,
+) -> None:
+    """Find the best source for a paper, cache it, and explain the choice. Doesn't convert."""
+    try:
+        resolution = sources.resolve(source, refresh=refresh)
+    except sources.SourceError as error:
+        typer.echo(f"offprint resolve: {error}", err=True)
+        raise typer.Exit(code=1) from None
+    typer.echo(sources.format_report(resolution))
+    if resolution.path is None:
+        raise typer.Exit(code=1)
