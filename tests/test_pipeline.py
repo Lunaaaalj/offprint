@@ -290,7 +290,7 @@ def test_no_cover_skips_the_cover(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(pipeline, "convert_pdf", lambda _: TINY)
     monkeypatch.setattr(pipeline, "generate_cover", no_cover_expected)
 
-    result = run(PDF, "-o", tmp_path, "--no-cover")
+    result = run(PDF, "-o", tmp_path, "--no-cover", "--allow-review")
 
     assert result.exit_code == 0, result.output
     assert result.stdout.strip() == str(tmp_path / "paper.epub")
@@ -303,7 +303,7 @@ def test_rendering_problems_are_printed_after_the_path(
     monkeypatch.setattr(pipeline, "convert_pdf", lambda _: TINY)
     monkeypatch.setattr(pipeline, "render_epub", _render_with_a_problem)
 
-    result = run(PDF, "-o", tmp_path, "--no-cover")
+    result = run(PDF, "-o", tmp_path, "--no-cover", "--allow-review")
 
     assert result.exit_code == 0, result.output
     assert result.stdout.strip() == str(tmp_path / "paper.epub")

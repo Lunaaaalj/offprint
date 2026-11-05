@@ -1,18 +1,27 @@
 """The conversion pipeline: from an INPUT to a finished EPUB, without touching the network.
 
-input → `cached_source` → adapter → `validate` → `generate_cover` → `render_epub`
+input → `cached_source` → adapter → `validate` → `generate_cover` → `render_epub` → `run_gate`
 
-Every failure the user can act on becomes a `ConvertError`, with a message for the terminal.
+Every failure the user can act on becomes a `ConvertError`, with a message for the terminal, and
+writes nothing. A book that reaches the gate is written with its report, whatever the verdict.
 """
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 
-from offprint.adapters.pdf import LayoutError, NoProfileMatch, UnreadablePdfError, convert_pdf
+from offprint.adapters.pdf import (
+    LayoutError,
+    NoProfileMatch,
+    UnreadablePdfError,
+    convert_pdf,
+    read_evidence,
+)
 from offprint.browser import BrowserUnavailableError
 from offprint.cover import CoverLayoutError, generate_cover
-from offprint.ir import Document, Meta, SourceTier, validate
-from offprint.render.epub import EpubRenderError, EpubResult, render_epub
+from offprint.extraction import SourceEvidence
+from offprint.ir import Document, Meta, Problem, SourceTier, validate
+from offprint.qa import QaReport, run_gate, write_report
+from offprint.render.epub import EpubRenderError, render_epub
 from offprint.sources import (
     LocalFile,
     Resolution,
@@ -34,7 +43,16 @@ class ConvertError(Exception):
     """The paper can't be converted, and no EPUB was written."""
 
 
-def convert_to_epub(source: str, outdir: Path, *, cover: bool = True) -> EpubResult:
+@dataclass(frozen=True, slots=True)
+class Conversion:
+    path: Path
+    problems: tuple[Problem, ...]
+    report: QaReport
+    report_path: Path
+    """The readable report. The JSON one is next to it."""
+
+
+def convert_to_epub(source: str, outdir: Path, *, cover: bool = True) -> Conversion:
     """Convert `source`, a local file or a cached identifier, to `outdir/<name>.epub`."""
     try:
         target = detect_input(source)
@@ -49,10 +67,16 @@ def convert_to_epub(source: str, outdir: Path, *, cover: bool = True) -> EpubRes
         raise ConvertError(f"the IR is invalid: {listed}")
 
     cover_png = _render_cover(doc) if cover else None
+    stem = output_stem(target)
     try:
-        return render_epub(doc, outdir / f"{output_stem(target)}.epub", cover=cover_png)
+        epub = render_epub(doc, outdir / f"{stem}.epub", cover=cover_png)
+        report = run_gate(
+            doc, epub=epub, evidence=_read_evidence(resolution), cover=cover_png is not None
+        )
+        _, report_path = write_report(report, outdir, stem)
     except (EpubRenderError, OSError) as error:
         raise ConvertError(str(error)) from error
+    return Conversion(epub.path, epub.problems, report, report_path)
 
 
 def combine_meta(extracted: Meta, resolved: Meta | None) -> Meta:
@@ -99,6 +123,16 @@ def _read_document(resolution: Resolution) -> Document:
         return convert_pdf(resolution.path)
     except (LayoutError, NoProfileMatch, UnreadablePdfError) as error:
         raise ConvertError(str(error)) from error
+
+
+def _read_evidence(resolution: Resolution) -> SourceEvidence | None:
+    """Read what the gate compares with. A source without any has its checks skipped, not failed."""
+    if resolution.tier != "pdf" or resolution.path is None:
+        return None
+    try:
+        return read_evidence(resolution.path)
+    except (NoProfileMatch, UnreadablePdfError):
+        return None
 
 
 def _render_cover(doc: Document) -> bytes:
