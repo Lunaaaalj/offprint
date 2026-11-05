@@ -44,8 +44,12 @@ class TableCell:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ExtractedTable:
-    """A detected table before cleanup. Rows may be uneven and a cell may be None (merged away)."""
+    """A detected table. Rows may be uneven and a cell may be None (merged away).
+
+    `header` stays empty until `join_header_rows` moves the header rows out of `rows`.
+    """
 
     rows: tuple[tuple[TableCell | None, ...], ...]
     bbox: BBox
     page: int
+    header: tuple[TableCell | None, ...] = ()
