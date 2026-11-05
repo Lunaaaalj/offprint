@@ -43,6 +43,7 @@ from offprint.ir import (
 )
 from offprint.render.epub import EpubOptions, EpubRenderError, render_epub
 from offprint.render.epub.images import prepare_image
+from offprint.render.epub.package import book_identifier
 from offprint.render.epub.sanitize import strip_invalid_xml
 from offprint.render.epub.xhtml import safe_href
 
@@ -796,3 +797,11 @@ def test_epubcheck_accepts_the_hand_built_book(tmp_path):
     path = render_epub(full_doc(), tmp_path / "book.epub", cover=png(16, 24)).path
     result = subprocess.run([epubcheck, str(path)], capture_output=True, text=True, timeout=120)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_identifier_survives_a_lone_surrogate_in_an_author_name() -> None:
+    meta = Meta(title="T", authors=(Author(name="A\ud800"),))
+
+    assert book_identifier(meta, "T") == book_identifier(
+        replace(meta, authors=(Author(name="A"),)), "T"
+    )
