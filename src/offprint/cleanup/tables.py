@@ -79,6 +79,13 @@ def _row_is_empty(row: Row) -> bool:
     return all(_is_empty(cell) for cell in row)
 
 
+def _text_start(cell: TableCell | None) -> float | None:
+    """Return the x where a cell's text starts, or None if it has none."""
+    if cell is None:
+        return None
+    return min((span.bbox[0] for span in cell.spans if span.text.strip()), default=None)
+
+
 def _width(table: ExtractedTable) -> int:
     return max((len(row) for row in (table.header, *table.rows)), default=0)
 
@@ -192,9 +199,11 @@ def join_wrapped_rows(table: ExtractedTable, options: TableOptions | None = None
 def merge_phantom_columns(table: ExtractedTable) -> ExtractedTable:
     """Fold each column with an empty header into the neighbour with fewer conflicts.
 
-    A conflict is a row where both columns hold text, and ties go left. A table without a header
-    gives no way to tell a phantom column, so it's left alone, as is a column with no named
-    neighbour.
+    A conflict is a row where both columns hold text. A tie goes to the neighbour whose text starts
+    closest to the column's: detection often cuts a column in two at the end of its short last
+    lines, and those lines start where the column's other lines do. Any tie left goes left. A table
+    without a header gives no way to tell a phantom column, so it's left alone, as is a column with
+    no named neighbour.
     """
     if not table.header:
         return table
@@ -204,6 +213,10 @@ def merge_phantom_columns(table: ExtractedTable) -> ExtractedTable:
 
     def conflicts(first: int, second: int) -> int:
         return sum(1 for row in rows if not (_is_empty(row[first]) or _is_empty(row[second])))
+
+    def misalignment(first: int, second: int) -> float:
+        starts = [(_text_start(row[first]), _text_start(row[second])) for row in rows]
+        return sum(abs(a - b) for a, b in starts if a is not None and b is not None)
 
     column = 0
     while column < len(header):
@@ -215,7 +228,9 @@ def merge_phantom_columns(table: ExtractedTable) -> ExtractedTable:
         if not _is_empty(header[column]) or not named:
             column += 1
             continue
-        target = min(named, key=lambda index: conflicts(column, index))
+        target = min(
+            named, key=lambda index: (conflicts(column, index), misalignment(column, index))
+        )
         for row in rows:
             row[target] = _join_cells(row[target], row[column])
             del row[column]

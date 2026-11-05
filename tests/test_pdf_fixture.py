@@ -146,6 +146,18 @@ def test_phantom_columns_are_gone(doc: Document) -> None:
         assert plain_text(table.header[3]).startswith("Dataset")
 
 
+def test_short_last_lines_stay_in_their_column(doc: Document) -> None:
+    # Tables 6, 10 and 17 sent these lines to the references column.
+    for number, reference, sentence_end in (
+        ("6", "Khan et al. (2022)", "and performance metrics."),
+        ("10", "Ryu et al. (2020)", "improved accuracy."),
+        ("17", "Abuhmed et al. (2021)", "model for classification"),
+    ):
+        row = next(r for r in cells(table_number(doc, number)) if r[0].startswith(reference))
+        assert row[0] == reference
+        assert sentence_end in row[1]
+
+
 def test_tables_across_pages_keep_all_their_rows(doc: Document) -> None:
     assert len(table_number(doc, "11").rows) == 32
     assert len(table_number(doc, "19").rows) == 53
