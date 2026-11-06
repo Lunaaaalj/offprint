@@ -201,7 +201,7 @@ def test_a_pdf_no_profile_fits(tmp_path: Path) -> None:
     result = run(path, "-o", tmp_path / "out", "--no-cover")
 
     assert result.exit_code == 1
-    assert "profile" in result.stderr
+    assert "--profile PATH" in result.stderr
 
 
 @pytest.mark.parametrize("text", [str(DOI), str(ARXIV)])
@@ -324,7 +324,7 @@ def test_an_invalid_ir_is_refused_before_the_cover(
 ) -> None:
     heading = Heading(id="same", level=1, runs=(Text("One"),))
     invalid = Document(meta=Meta(title="T"), blocks=(heading, replace(heading)))
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _: invalid)
+    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: invalid)
 
     def no_cover_expected(_: Document) -> bytes:
         raise AssertionError("an invalid document reached the cover")
@@ -352,7 +352,7 @@ def test_a_failed_cover_stops_the_book_and_mentions_no_cover(
     def fail(_: Document) -> bytes:
         raise failure
 
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _: TINY)
+    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: TINY)
     monkeypatch.setattr(pipeline, "generate_cover", fail)
 
     result = run(PDF, "-o", tmp_path / "out")
@@ -370,7 +370,7 @@ def test_no_cover_skips_the_cover(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     def no_cover_expected(_: Document) -> bytes:
         raise AssertionError("--no-cover still generated a cover")
 
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _: TINY)
+    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: TINY)
     monkeypatch.setattr(pipeline, "generate_cover", no_cover_expected)
 
     result = run(PDF, "-o", tmp_path, "--no-cover", "--allow-review")
@@ -383,7 +383,7 @@ def test_no_cover_skips_the_cover(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 def test_rendering_problems_are_printed_after_the_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _: TINY)
+    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: TINY)
     monkeypatch.setattr(pipeline, "render_epub", _render_with_a_problem)
 
     result = run(PDF, "-o", tmp_path, "--no-cover", "--allow-review")
@@ -401,7 +401,7 @@ def test_the_resolvers_metadata_reaches_the_book(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     cached_entry(DOI, tmp_path, body=b"%PDF", meta=RESOLVED)
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _: TINY)
+    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: TINY)
 
     result = convert_to_epub(str(DOI), tmp_path / "out", cover=False)
 
@@ -493,7 +493,7 @@ LATEX_DOC = Document(
 def test_convert_renders_latex_and_reports_what_it_could_not(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr(pipeline, "_read_document", lambda _resolution: (LATEX_DOC, ()))
+    monkeypatch.setattr(pipeline, "_read_document", lambda _resolution, _profile: (LATEX_DOC, ()))
     result = convert_to_epub(str(PDF), tmp_path, cover=False)
     codes = [(problem.code, problem.block_id) for problem in result.problems]
     assert codes == [("math.render_failed", "bad"), ("epub.equation_text_fallback", "bad")]

@@ -24,6 +24,7 @@ from offprint.cover import CoverLayoutError, generate_cover
 from offprint.equations import typeset_math
 from offprint.extraction import SourceEvidence
 from offprint.ir import Document, Meta, Problem, SourceTier, validate
+from offprint.profiles import Profile, ProfileError, load_profile_file
 from offprint.qa import QaReport, run_gate, write_report
 from offprint.render.epub import EpubRenderError, render_epub
 from offprint.sources import (
@@ -55,7 +56,9 @@ class Conversion:
     """The readable report. The JSON one is next to it."""
 
 
-def convert_to_epub(source: str, outdir: Path, *, cover: bool = True) -> Conversion:
+def convert_to_epub(
+    source: str, outdir: Path, *, cover: bool = True, profile: Path | None = None
+) -> Conversion:
     """Convert `source`, a local file or a cached identifier, to `outdir/<name>.epub`."""
     try:
         target = detect_input(source)
@@ -63,7 +66,14 @@ def convert_to_epub(source: str, outdir: Path, *, cover: bool = True) -> Convers
     except SourceError as error:
         raise ConvertError(str(error)) from error
 
-    doc, adapter_problems = _read_document(resolution)
+    if profile is not None and resolution.tier != "pdf":
+        raise ConvertError("--profile applies only to PDF sources")
+    try:
+        selected_profile = load_profile_file(profile) if profile is not None else None
+    except ProfileError as error:
+        raise ConvertError(str(error)) from error
+
+    doc, adapter_problems = _read_document(resolution, selected_profile)
     doc = replace(doc, meta=combine_meta(doc.meta, resolution.meta))
     typeset = typeset_math(doc)
     doc = typeset.doc
@@ -77,7 +87,10 @@ def convert_to_epub(source: str, outdir: Path, *, cover: bool = True) -> Convers
         epub = render_epub(doc, outdir / f"{stem}.epub", cover=cover_png)
         epub = replace(epub, problems=(*adapter_problems, *typeset.problems, *epub.problems))
         report = run_gate(
-            doc, epub=epub, evidence=_read_evidence(resolution), cover=cover_png is not None
+            doc,
+            epub=epub,
+            evidence=_read_evidence(resolution, selected_profile),
+            cover=cover_png is not None,
         )
         _, report_path = write_report(report, outdir, stem)
     except (EpubRenderError, OSError) as error:
@@ -121,7 +134,9 @@ def output_stem(target: SourceInput) -> str:
     return identifier_slug(target)
 
 
-def _read_document(resolution: Resolution) -> tuple[Document, tuple[Problem, ...]]:
+def _read_document(
+    resolution: Resolution, profile: Profile | None = None
+) -> tuple[Document, tuple[Problem, ...]]:
     """Run the source's adapter. Returns the document and what the adapter couldn't map."""
     if resolution.tier not in ("pdf", "jats") or resolution.path is None:
         template = _MISSING_ADAPTERS.get(resolution.tier or "ml", "no source for {input}")
@@ -130,19 +145,19 @@ def _read_document(resolution: Resolution) -> tuple[Document, tuple[Problem, ...
         if resolution.tier == "jats":
             result = convert_jats(resolution.path)
             return result.document, result.problems
-        return convert_pdf(resolution.path), ()
+        return convert_pdf(resolution.path, profile=profile), ()
     except (JatsError, LayoutError, NoProfileMatch, UnreadablePdfError) as error:
         raise ConvertError(str(error)) from error
 
 
-def _read_evidence(resolution: Resolution) -> SourceEvidence | None:
+def _read_evidence(resolution: Resolution, profile: Profile | None = None) -> SourceEvidence | None:
     """Read what the gate compares with. A source without any has its checks skipped, not failed."""
     if resolution.path is None:
         return None
     try:
         if resolution.tier == "jats":
             return read_jats_evidence(resolution.path)
-        return read_evidence(resolution.path) if resolution.tier == "pdf" else None
+        return read_evidence(resolution.path, profile=profile) if resolution.tier == "pdf" else None
     except (JatsError, NoProfileMatch, UnreadablePdfError):
         return None
 

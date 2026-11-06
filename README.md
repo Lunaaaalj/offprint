@@ -111,9 +111,16 @@ offprint preview build/paper.epub          # → Kindle-sized PNGs in build/pape
 | `convert` option | Effect |
 |---|---|
 | `-o`, `--output OUTDIR` | Where to write the book (default: the current directory). The file is `<input stem or identifier>.epub`. |
+| `--profile PATH` | Use a publisher profile YAML for a PDF, including with `--emit-ir`. The same profile is used for QA evidence. |
 | `--no-cover` | Skip the cover. Without it, a cover that can't be made (Chromium is missing, or the layout checks fail) stops the conversion. |
 | `--emit-ir` | Write `<stem>.ir.json` and `<stem>.assets/` instead of an EPUB. Takes local PDFs only. |
 | `--allow-review` | Exit 0 even if the QA verdict is `review`. |
+
+For a template that is not detected automatically, start from a packaged profile such as
+`src/offprint/profiles/frontiers.yaml`, adapt it, and run
+`offprint convert paper.pdf --profile my-journal.yaml`. The supplied profile overrides automatic
+matching. Missing or malformed files stop conversion with a diagnostic; there is no automatic
+fallback to another profile. This does not add support for new layout types or an ML fallback.
 
 `convert` prints the EPUB's path on stdout and a QA summary on stderr, and writes `<stem>.qa.json` and `<stem>.qa.md` next to the book. If the verdict is `review`, it exits 3 and the book is still there to look at. See [`docs/qa.md`](docs/qa.md). Anything the adapter couldn't map (`jats.*` codes), or the equation stage or the renderer had to change (`math.*` and `epub.*` codes), is on stderr and in the report.
 

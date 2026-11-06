@@ -473,7 +473,7 @@ def test_the_summary_fits_on_a_screen(doc: Document, evidence: SourceEvidence) -
 def test_review_exits_non_zero_but_keeps_the_book(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _: tiny(authors=()))
+    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: tiny(authors=()))
 
     result = runner.invoke(app, ["convert", str(PDF), "-o", str(tmp_path), "--no-cover"])
 
@@ -488,7 +488,7 @@ def test_review_exits_non_zero_but_keeps_the_book(
 def test_allow_review_overrides_the_exit_code(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _: tiny(authors=()))
+    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: tiny(authors=()))
 
     args = ["convert", str(PDF), "-o", str(tmp_path), "--no-cover", "--allow-review"]
     result = runner.invoke(app, args)
@@ -498,8 +498,8 @@ def test_allow_review_overrides_the_exit_code(
 
 
 def test_a_pass_exits_zero(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _: tiny())
-    monkeypatch.setattr(pipeline, "_read_evidence", lambda _: None)
+    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: tiny())
+    monkeypatch.setattr(pipeline, "_read_evidence", lambda _, _profile: None)
 
     result = runner.invoke(app, ["convert", str(PDF), "-o", str(tmp_path), "--no-cover"])
 
