@@ -35,12 +35,12 @@ def convert_pdf(path: Path, profile: Profile | None = None) -> Document:
         )
 
 
-def emit_ir(path: Path, outdir: Path) -> Path:
+def emit_ir(path: Path, outdir: Path, profile: Profile | None = None) -> Path:
     """Convert a PDF and write `<stem>.ir.json`, with assets in `<stem>.assets/`, to `outdir`.
 
     Returns the path of the JSON. A document that fails `validate` is an error, not a file.
     """
-    doc = convert_pdf(path)
+    doc = convert_pdf(path, profile=profile)
     problems = validate(doc)
     if problems:
         listed = "; ".join(f"{problem.code}: {problem.message}" for problem in problems)

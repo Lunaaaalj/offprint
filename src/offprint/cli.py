@@ -24,28 +24,32 @@ def _show_version(value: bool) -> None:
         raise typer.Exit()
 
 
-def _emit_ir(source: Path, outdir: Path) -> None:
+def _emit_ir(source: Path, outdir: Path, profile: Path | None) -> None:
     # Imported here so that `--version` and `--help` don't pay for loading PyMuPDF.
     from offprint.adapters.pdf import LayoutError, NoProfileMatch, UnreadablePdfError, emit_ir
+    from offprint.profiles import ProfileError, load_profile_file
 
     if not source.is_file():
         typer.echo(f"offprint convert: no such file: {source}", err=True)
         raise typer.Exit(code=1)
     try:
-        target = emit_ir(source, outdir)
-    except (LayoutError, NoProfileMatch, UnreadablePdfError) as error:
+        selected_profile = load_profile_file(profile) if profile is not None else None
+        target = emit_ir(source, outdir, profile=selected_profile)
+    except (LayoutError, NoProfileMatch, ProfileError, UnreadablePdfError) as error:
         typer.echo(f"offprint convert: {error}", err=True)
         raise typer.Exit(code=1) from error
     typer.echo(target)
 
 
-def _write_epub(source: str, outdir: Path, cover: bool, allow_review: bool) -> None:
+def _write_epub(
+    source: str, outdir: Path, cover: bool, allow_review: bool, profile: Path | None
+) -> None:
     # Imported here so that `--version` and `--help` don't pay for PyMuPDF and Playwright.
     from offprint.pipeline import ConvertError, convert_to_epub
     from offprint.qa import summary
 
     try:
-        result = convert_to_epub(source, outdir, cover=cover)
+        result = convert_to_epub(source, outdir, cover=cover, profile=profile)
     except ConvertError as error:
         typer.echo(f"offprint convert: {error}", err=True)
         raise typer.Exit(code=1) from error
@@ -86,6 +90,12 @@ def convert(
     emit_ir: Annotated[
         bool, typer.Option("--emit-ir", help="Write the IR as JSON instead of an EPUB.")
     ] = False,
+    profile: Annotated[
+        Path | None,
+        typer.Option(
+            "--profile", metavar="PATH", help="Use this publisher profile YAML for a PDF."
+        ),
+    ] = None,
     no_cover: Annotated[bool, typer.Option("--no-cover", help="Don't generate a cover.")] = False,
     allow_review: Annotated[
         bool, typer.Option("--allow-review", help="Exit 0 even if the QA verdict is review.")
@@ -96,9 +106,9 @@ def convert(
     Exits 1 if no book could be made and 3 if the book needs review (see `<name>.qa.md`).
     """
     if emit_ir:
-        _emit_ir(Path(source), outdir)
+        _emit_ir(Path(source), outdir, profile)
         return
-    _write_epub(source, outdir, cover=not no_cover, allow_review=allow_review)
+    _write_epub(source, outdir, cover=not no_cover, allow_review=allow_review, profile=profile)
 
 
 @app.command()

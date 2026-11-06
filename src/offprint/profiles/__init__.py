@@ -45,7 +45,11 @@ def _parse(text: str, source: str) -> Profile:
 
 
 def load_profile_file(path: Path) -> Profile:
-    return _parse(path.read_text(encoding="utf-8"), path.name)
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as error:
+        raise ProfileError(f"{path}: can't read profile: {error}") from error
+    return _parse(text, str(path))
 
 
 @cache
@@ -92,5 +96,6 @@ def select_profile(facts: DocumentFacts, profiles: tuple[Profile, ...] | None = 
     _, name, failed = closest
     raise NoProfileMatch(
         f"no profile matches this document; the closest is {name!r}, "
-        f"which also needs: {', '.join(failed) or 'nothing'}"
+        f"which also needs: {', '.join(failed) or 'nothing'}. "
+        "Use --profile PATH to supply a publisher profile."
     )
