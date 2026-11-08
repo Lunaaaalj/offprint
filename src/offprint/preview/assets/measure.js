@@ -17,6 +17,12 @@
     figure: firstPage("figure"),
     equation: firstPage("div.equation"),
     table: firstPage("table"),
+    overflowing_tables: [...document.querySelectorAll("div.table")]
+      .filter((box) => {
+        const table = box.querySelector("table");
+        return table && table.getBoundingClientRect().width > box.getBoundingClientRect().width + 1;
+      })
+      .map((box) => box.id),
     anchors: Object.fromEntries(
       fragments.flatMap((id) => {
         const element = document.getElementById(id);

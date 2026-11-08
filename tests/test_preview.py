@@ -13,7 +13,7 @@ from typer.testing import CliRunner
 from offprint.adapters.pdf import convert_pdf, read_evidence
 from offprint.browser import BrowserUnavailableError
 from offprint.cli import app
-from offprint.ir import Document, Figure, Table, Text
+from offprint.ir import Author, Document, Figure, License, Meta, Provenance, Table, Text
 from offprint.preview import PreviewError, PreviewOptions, link_report, preview_epub
 from offprint.preview.device import load_device
 from offprint.preview.frame import contact_sheet, eink, with_bezel
@@ -506,6 +506,34 @@ def test_without_chromium_the_command_says_how_to_get_it(
 
     assert result.exit_code == 1
     assert "playwright install chromium" in result.stderr
+
+
+# Tables that are wider than the page
+
+
+def numbers_table(columns: int, width: int = 4) -> Table:
+    cells = tuple((Text("9" * width),) for _ in range(columns))
+    return Table(id="t1", number="1", caption=(Text("Numbers"),), header=cells, rows=(cells,) * 4)
+
+
+def preview_of(tmp_path: Path, table: Table) -> list[str]:
+    meta = Meta(title="T", authors=(Author(name="A"),), license=License(spdx="CC-BY-4.0"))
+    doc = Document(
+        meta=meta,
+        blocks=(table,),
+        provenance={table.id: Provenance(adapter="test")},
+    )
+    epub = render_epub(doc, tmp_path / "book.epub")
+    return list(preview_epub(epub.path, tmp_path / "out").overflowing_tables)
+
+
+def test_a_wide_table_of_numbers_fits_the_page(tmp_path: Path, chromium: None) -> None:
+    assert preview_of(tmp_path, numbers_table(13)) == []
+
+
+def test_a_table_that_cannot_fit_is_reported(tmp_path: Path, chromium: None) -> None:
+    [found] = preview_of(tmp_path, numbers_table(6, width=40))
+    assert found.startswith("front-matter.xhtml#")
 
 
 def test_an_unused_import_guard() -> None:

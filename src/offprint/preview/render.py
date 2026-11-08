@@ -71,6 +71,8 @@ class PreviewResult:
     """The `qa.json` used, if any."""
     unplaced: int
     """Findings with no place in the book, so no page to show."""
+    overflowing_tables: tuple[str, ...] = ()
+    """`file#id` of each table wider than the page."""
 
 
 def reader_css(device: Device) -> str:
@@ -109,6 +111,7 @@ def _measure(
         fragments = sorted({f.fragment for f in flags if f.file == file and f.fragment})
         _open_chapter(page, root / path, css)
         measured = page.evaluate(script, {"fragments": fragments, "stride": device.width})
+        measured["overflowing_tables"] = tuple(measured["overflowing_tables"])
         layouts.append(ChapterLayout(file=file, **measured))
     return layouts
 
@@ -199,7 +202,11 @@ def _write_contact_sheet(pages: Sequence[RenderedPage], path: Path, device: Devi
 
 
 def _manifest(
-    epub: Path, pages: Sequence[RenderedPage], unplaced: int, device: Device
+    epub: Path,
+    pages: Sequence[RenderedPage],
+    unplaced: int,
+    overflowing: Sequence[str],
+    device: Device,
 ) -> dict[str, object]:
     return {
         "manifest_version": MANIFEST_VERSION,
@@ -207,6 +214,7 @@ def _manifest(
         "device": {"width": device.width, "height": device.height, "scale": device.scale},
         "contact_sheet": CONTACT_SHEET,
         "unplaced_findings": unplaced,
+        "overflowing_tables": list(overflowing),
         "pages": [
             {
                 "image": item.image.name,
@@ -295,7 +303,10 @@ def preview_epub(
     sheet = outdir / CONTACT_SHEET
     _write_contact_sheet(rendered, sheet, device)
     manifest = outdir / MANIFEST
-    data = _manifest(epub, rendered, unplaced, device)
+    overflowing = tuple(
+        f"{layout.file}#{table}" for layout in layouts for table in layout.overflowing_tables
+    )
+    data = _manifest(epub, rendered, unplaced, overflowing, device)
     manifest.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return PreviewResult(
         outdir=outdir,
@@ -304,4 +315,5 @@ def preview_epub(
         manifest=manifest,
         report=report,
         unplaced=unplaced,
+        overflowing_tables=overflowing,
     )

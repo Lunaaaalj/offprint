@@ -31,6 +31,8 @@ class ChapterLayout:
     figure: int | None = None
     equation: int | None = None
     table: int | None = None
+    overflowing_tables: tuple[str, ...] = ()
+    """Ids of the tables wider than the page."""
     anchors: Mapping[str, int] = field(default_factory=dict)
     """Page of each id that was asked about."""
 
