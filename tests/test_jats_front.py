@@ -74,15 +74,15 @@ def test_authors_get_the_affiliations_they_point_to() -> None:
     )
 
     assert read_authors(meta(xml)) == (
-        Author(name="A. One", affiliation="Inst, City"),
-        Author(name="A. Two", affiliation="Inst, City; Other"),
+        Author(name="A. One", affiliations=("Inst, City",)),
+        Author(name="A. Two", affiliations=("Inst, City", "Other")),
     )
 
 
 def test_a_lone_affiliation_applies_to_everyone() -> None:
     xml = author("One") + '<aff id="a"><institution>Inst</institution></aff>'
 
-    assert read_authors(meta(xml))[0].affiliation == "Inst"
+    assert read_authors(meta(xml))[0].affiliations == ("Inst",)
 
 
 def test_tagged_affiliation_parts_get_commas() -> None:
@@ -92,13 +92,13 @@ def test_tagged_affiliation_parts_get_commas() -> None:
         "<country>Country</country></aff>"
     )
 
-    assert read_authors(meta(xml))[0].affiliation == "Inst, City, Country"
+    assert read_authors(meta(xml))[0].affiliations == ("Inst, City, Country",)
 
 
 def test_an_email_in_an_affiliation_stays_out() -> None:
     xml = author("One") + '<aff id="a"><institution>Inst</institution>, <email>x@y.z</email></aff>'
 
-    assert read_authors(meta(xml))[0].affiliation == "Inst"
+    assert read_authors(meta(xml))[0].affiliations == ("Inst",)
 
 
 @pytest.mark.parametrize(

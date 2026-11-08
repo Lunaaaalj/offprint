@@ -101,8 +101,9 @@ def _xml_link(links: list[dict[str, Any]]) -> str | None:
 
 def _author(person: dict[str, Any]) -> Author:
     name = " ".join(part for part in (person.get("given"), person.get("family")) if part)
-    affiliations = person.get("affiliation") or [{}]
-    return Author(name=name or person.get("name", ""), affiliation=affiliations[0].get("name"))
+    names = (affiliation.get("name") for affiliation in person.get("affiliation") or [])
+    affiliations = tuple(dict.fromkeys(name for name in names if name))
+    return Author(name=name or person.get("name", ""), affiliations=affiliations)
 
 
 def _year(work: dict[str, Any]) -> int | None:

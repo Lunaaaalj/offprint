@@ -87,6 +87,26 @@ def test_figure_labels_are_optional_and_read_from_the_profile(data: dict[str, An
         build_profile(data, "t")
 
 
+def test_the_byline_rules_are_optional(data: dict[str, Any]) -> None:
+    metadata = build_profile(data, "t").metadata
+    assert (metadata.author_markers, metadata.email) == ("", None)
+    assert (metadata.arxiv_id, metadata.venue) == (None, None)
+
+    data["metadata"].update(
+        author_markers="∗†", email=r"\S+@\S+", arxiv_id="(?P<arxiv_id>x)", venue="(?P<venue>y)"
+    )
+    metadata = build_profile(data, "t").metadata
+    assert (metadata.author_markers, metadata.email) == ("∗†", r"\S+@\S+")
+
+
+@pytest.mark.parametrize("key", ["arxiv_id", "venue"])
+def test_a_stamp_rule_needs_its_group(data: dict[str, Any], key: str) -> None:
+    data["metadata"][key] = "no group here"
+
+    with pytest.raises(ProfileError, match=rf"t\.metadata\.{key}: needs the groups \['{key}'\]"):
+        build_profile(data, "t")
+
+
 def test_a_typo_in_a_key_is_an_error(data: dict[str, Any]) -> None:
     data["page"]["split_xx"] = 1
 

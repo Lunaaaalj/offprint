@@ -212,6 +212,21 @@ def meta_required(doc: Document) -> Outcome:
     )
 
 
+def meta_author_names(doc: Document, config: QaConfig) -> Outcome:
+    noise = re.compile(config.author_name_noise)
+    return Outcome(
+        findings=tuple(
+            finding(
+                "meta.author_name",
+                f"the author {author.name!r} has an email address, a mark or a digit in the name",
+                location=FRONT_MATTER_LOCATION,
+            )
+            for author in doc.meta.authors
+            if noise.search(author.name)
+        )
+    )
+
+
 def problem_outcomes(problems: Iterable[Problem], check_ids: Iterable[str]) -> dict[str, Outcome]:
     """Report problems from elsewhere (`validate`, the renderer) under the codes they came with."""
     grouped: dict[str, list[Finding]] = {check_id: [] for check_id in check_ids}

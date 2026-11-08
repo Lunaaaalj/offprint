@@ -95,6 +95,13 @@ CHECKS: tuple[Check, ...] = (
         "A book needs a title, an author and a license. Check the metadata rules in the profile, "
         "or run `offprint resolve` so the registry can fill the gap.",
     ),
+    Check(
+        "meta.author_name",
+        "error",
+        "An author's name has an email address, a footnote mark or a digit in it: the byline was "
+        "split in the wrong place. Check `metadata.author_markers` and `metadata.email` in the "
+        "profile.",
+    ),
     Check("block.duplicate_id", "error", _IR_HINT),
     Check("provenance.missing", "error", _IR_HINT),
     Check("provenance.unknown_block", "error", _IR_HINT),

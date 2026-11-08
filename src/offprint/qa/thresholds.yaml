@@ -27,6 +27,11 @@ references:
   # the list is by author and year, and the numbering check has nothing to say.
   numbered_share: 0.5
 
+authors:
+  # An author's name can't hold any of these: an email address, a footnote mark or a digit. They
+  # show that a block of the byline was split in the wrong place.
+  name_noise: '[@∗*†‡§¶‖#\d]'
+
 epubcheck:
   timeout_seconds: 120
 

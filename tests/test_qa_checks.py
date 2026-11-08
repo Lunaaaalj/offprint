@@ -31,6 +31,7 @@ from offprint.qa.checks import (
     counts_figures,
     counts_tables,
     figure_foreign_caption,
+    meta_author_names,
     meta_required,
     problem_outcomes,
     reference_numbering,
@@ -612,3 +613,39 @@ def test_the_gate_reports_dropped_text_from_the_adapter(tmp_path: Path) -> None:
 
     assert "pdf.dropped_text" in {f.check for f in report.findings}
     assert report.verdict == "review"
+
+
+# meta.author_name
+
+
+def authors_doc(*names: str) -> Document:
+    return replace(document(), meta=replace(META, authors=tuple(Author(name=n) for n in names)))
+
+
+@pytest.mark.parametrize("name", ["Ashish Vaswani", "Łukasz Kaiser", "M. Sivagami", "Y. Nibila"])
+def test_ordinary_names_pass(name: str) -> None:
+    assert not meta_author_names(authors_doc(name), CONFIG).findings
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Ashish Vaswani∗ avaswani@google.com",  # What a grid used to give.
+        "Aidan N. Gomez∗†",
+        "Noam Shazeer*",
+        "Jakob Uszkoreit1",
+        "Illia Polosukhin‡",
+    ],
+)
+def test_a_name_with_an_email_a_marker_or_a_digit_fires(name: str) -> None:
+    outcome = meta_author_names(authors_doc("Fine Name", name), CONFIG)
+
+    [found] = outcome.findings
+    assert (found.check, found.severity) == ("meta.author_name", "error")
+    assert repr(name) in found.message
+
+
+def test_the_gate_reports_a_bad_author_name() -> None:
+    report = run_gate(authors_doc("Noam Shazeer∗"))
+
+    assert "meta.author_name" in {f.check for f in report.findings}

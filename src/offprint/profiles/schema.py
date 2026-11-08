@@ -240,6 +240,15 @@ class Metadata:
     corresponding_marker: str
     keyword_prefix: Regex
     keyword_separator: Regex
+    author_markers: str = ""
+    """Characters that tie an author to a note, such as `∗†‡`. They are kept apart from the name."""
+    email: Regex | None = None
+    """Matches an email address. A line of the byline that holds one is left out."""
+    arxiv_id: Regex | None = None
+    """Searched in the text of the first page, with the group `arxiv_id`."""
+    venue: Regex | None = None
+    """Searched in the text of the first page, with the group `venue`. It names the journal when
+    the citation doesn't."""
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -281,6 +290,12 @@ def build_profile(data: Any, source: str) -> Profile:
         missing = {"number", "text"} - set(re.compile(pattern).groupindex)
         if missing:
             raise ProfileError(f"{source}.{key}: needs the groups {sorted(missing)}")
+    for key, pattern in (
+        ("arxiv_id", profile.metadata.arxiv_id),
+        ("venue", profile.metadata.venue),
+    ):
+        if pattern is not None and key not in re.compile(pattern).groupindex:
+            raise ProfileError(f"{source}.metadata.{key}: needs the groups ['{key}']")
     return profile
 
 

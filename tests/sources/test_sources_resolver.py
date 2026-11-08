@@ -628,4 +628,4 @@ def test_arxiv_feed_with_old_style_ids() -> None:
     assert record.meta.title == "Wrapped title"
     assert record.meta.year == 1999
     assert record.meta.doi == "10.1016/s0370-2693(99)00001-1"
-    assert record.meta.authors == (Author(name="A. Author", affiliation="Somewhere"),)
+    assert record.meta.authors == (Author(name="A. Author", affiliations=("Somewhere",)),)
