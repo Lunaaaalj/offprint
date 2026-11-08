@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 
-from offprint.ir import Block, Meta, Paragraph
+from offprint.ir import Author, Block, Meta, Paragraph
 from offprint.render.epub.xhtml import RenderContext, doi_url, esc, render_blocks, render_runs
 
 
@@ -44,11 +44,7 @@ def render_front_matter(
     use_meta_abstract = meta.abstract and not any(_has_role(b, "abstract") for b in all_blocks)
 
     parts = [f'<h1 class="title">{esc(title)}</h1>']
-    if meta.authors:
-        names = ", ".join(author.name for author in meta.authors)
-        parts.append(f'<p class="authors">{esc(names)}</p>')
-    affiliations = dict.fromkeys(a.affiliation for a in meta.authors if a.affiliation)
-    parts.extend(f'<p class="affiliation">{esc(text)}</p>' for text in affiliations)
+    parts.extend(_byline(meta))
 
     if abstract_blocks or use_meta_abstract:
         parts.append('<h2 class="abstract-label">Abstract</h2>')
@@ -68,6 +64,27 @@ def render_front_matter(
     if meta.license is not None:
         parts.append(f'<p class="license">{esc(license_text(meta))}</p>')
     return "\n".join(parts)
+
+
+def _byline(meta: Meta) -> list[str]:
+    """The authors and their affiliations. With more than one affiliation, each is numbered, and
+    each author shows the numbers of theirs. Markers that tie an author to a note follow."""
+    if not meta.authors:
+        return []
+    affiliations = tuple(dict.fromkeys(a for author in meta.authors for a in author.affiliations))
+    numbered = len(affiliations) > 1
+
+    def superscript(author: Author) -> str:
+        numbers = [str(affiliations.index(a) + 1) for a in author.affiliations] if numbered else []
+        shown = [*numbers, *author.markers]
+        return f"<sup>{esc(','.join(shown))}</sup>" if shown else ""
+
+    names = ", ".join(f"{esc(author.name)}{superscript(author)}" for author in meta.authors)
+    parts = [f'<p class="authors">{names}</p>']
+    for number, text in enumerate(affiliations, start=1):
+        label = f"<sup>{number}</sup> " if numbered else ""
+        parts.append(f'<p class="affiliation">{label}{esc(text)}</p>')
+    return parts
 
 
 def _has_role(block: Block, role: str) -> bool:

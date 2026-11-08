@@ -64,8 +64,8 @@ def read_authors(meta: Element) -> tuple[Author, ...]:
         corresponding = contrib.get("corresp") == "yes" or (
             contrib.find("xref[@ref-type='corresp']") is not None
         )
-        joined = "; ".join(dict.fromkeys(found)) or only
-        authors.append(Author(name=name, affiliation=joined, corresponding=corresponding))
+        own = tuple(dict.fromkeys(found)) or ((only,) if only else ())
+        authors.append(Author(name=name, affiliations=own, corresponding=corresponding))
     return tuple(authors)
 
 

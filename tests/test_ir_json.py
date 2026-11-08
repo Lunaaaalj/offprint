@@ -85,7 +85,13 @@ meta = st.builds(
     Meta,
     title=text,
     authors=st.lists(
-        st.builds(Author, name=text, affiliation=maybe_text, corresponding=st.booleans()),
+        st.builds(
+            Author,
+            name=text,
+            affiliations=st.lists(text, max_size=3).map(tuple),
+            corresponding=st.booleans(),
+            markers=st.lists(text, max_size=3).map(tuple),
+        ),
         max_size=3,
     ).map(tuple),
     journal=maybe_text,
@@ -203,9 +209,9 @@ def test_another_ir_version_is_rejected(tmp_path: Path) -> None:
     [
         ("not json", "not valid JSON"),
         ("[]", "no 'document'"),
-        ('{"ir_version": 1, "document": {"type": "Nope"}}', "unknown type 'Nope'"),
-        ('{"ir_version": 1, "document": {"type": "Document"}}', "bad Document"),
-        ('{"ir_version": 1, "document": {"type": "Text", "text": "x"}}', "not a Document"),
+        ('{"ir_version": 2, "document": {"type": "Nope"}}', "unknown type 'Nope'"),
+        ('{"ir_version": 2, "document": {"type": "Document"}}', "bad Document"),
+        ('{"ir_version": 2, "document": {"type": "Text", "text": "x"}}', "not a Document"),
     ],
 )
 def test_malformed_files_fail_clearly(text: str, message: str, tmp_path: Path) -> None:

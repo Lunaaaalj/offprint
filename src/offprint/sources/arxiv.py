@@ -90,10 +90,8 @@ def _arxiv_id(value: str) -> ArxivId | None:
 
 
 def _author(element: ElementTree.Element) -> Author:
-    return Author(
-        name=_text(element, "a:name"),
-        affiliation=_text(element, "x:affiliation") or None,
-    )
+    affiliation = _text(element, "x:affiliation")
+    return Author(name=_text(element, "a:name"), affiliations=(affiliation,) if affiliation else ())
 
 
 def _text(element: ElementTree.Element, path: str) -> str:

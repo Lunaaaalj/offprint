@@ -10,6 +10,7 @@ from offprint.adapters.pdf.assemble import (
     TableElement,
     TextElement,
     assemble,
+    byline_block,
     document_vocabulary,
     join_tables,
     merge_caption_fragments,
@@ -25,10 +26,12 @@ from offprint.adapters.pdf.extract import PageData
 from offprint.adapters.pdf.figures import figure_region, include_labels
 from offprint.adapters.pdf.layout import column_of, reading_order
 from offprint.adapters.pdf.metadata import (
+    BylineBlock,
     FrontMatter,
     build_meta,
-    parse_authors,
     parse_keywords,
+    read_authors,
+    read_stamps,
 )
 from offprint.adapters.pdf.roles import block_role
 from offprint.adapters.pdf.tables import (
@@ -37,6 +40,7 @@ from offprint.adapters.pdf.tables import (
     running_text_boxes,
 )
 from offprint.cleanup import cell_text, plain_text
+from offprint.cleanup.geometry import union
 from offprint.extraction import ExtractedTable, Line, Span, TableCell, TextBlock
 from offprint.ir import (
     Asset,
@@ -753,13 +757,234 @@ def test_the_vocabulary_rule_leaves_out_the_pieces_of_broken_words() -> None:
 # Metadata
 
 
-def test_authors_split_and_the_marker_shows_who_corresponds() -> None:
-    authors = parse_authors("Y. Nibila and M. Sivagami*", "Vellore", PROFILE)
+def named(text: str, box: BBox = (49, 100, 291, 110), affiliation: str = "") -> BylineBlock:
+    return BylineBlock(names=text, affiliation=affiliation, bbox=box)
 
-    assert [(a.name, a.corresponding, a.affiliation) for a in authors] == [
-        ("Y. Nibila", False, "Vellore"),
-        ("M. Sivagami", True, "Vellore"),
+
+def affiliated(text: str, box: BBox) -> BylineBlock:
+    return BylineBlock(names="", affiliation=text, bbox=box)
+
+
+def summary(authors) -> list[tuple]:
+    return [(a.name, a.affiliations, a.corresponding, a.markers) for a in authors]
+
+
+def test_authors_split_and_the_marker_shows_who_corresponds() -> None:
+    byline = [
+        named("Y. Nibila and M. Sivagami*", (49, 100, 291, 110)),
+        affiliated("Vellore", (49, 120, 291, 128)),
     ]
+
+    assert summary(read_authors(byline, PROFILE)) == [
+        ("Y. Nibila", ("Vellore",), False, ()),
+        ("M. Sivagami", ("Vellore",), True, ()),
+    ]
+
+
+GRID = replace(
+    PROFILE, metadata=replace(PROFILE.metadata, author_markers="∗†‡", author_separator="$^")
+)
+
+
+def test_a_grid_of_four_authors_each_with_their_own_affiliation() -> None:
+    byline = [
+        named("Ashish Vaswani∗", (133, 234, 204, 245), "Google Brain"),
+        named("Noam Shazeer∗", (239, 234, 305, 245), "Google Brain"),
+        named("Niki Parmar∗", (324, 234, 407, 267), "Google Research"),
+        named("Aidan N. Gomez∗†", (422, 234, 497, 267), "University of Toronto"),
+    ]
+
+    assert summary(read_authors(byline, GRID)) == [
+        ("Ashish Vaswani", ("Google Brain",), False, ("∗",)),
+        ("Noam Shazeer", ("Google Brain",), False, ("∗",)),
+        ("Niki Parmar", ("Google Research",), False, ("∗",)),
+        ("Aidan N. Gomez", ("University of Toronto",), False, ("∗", "†")),
+    ]
+
+
+def test_an_affiliation_block_belongs_to_the_name_block_just_above_it() -> None:
+    byline = [
+        named("Ashish Vaswani∗", (133, 234, 204, 245)),
+        named("Noam Shazeer∗", (239, 234, 305, 245)),
+        named("Łukasz Kaiser∗", (394, 284, 460, 295)),
+        affiliated("Google Brain", (117, 246, 216, 267)),
+        affiliated("Google Brain B", (231, 246, 309, 267)),
+        affiliated("Google Lukasz", (365, 296, 485, 317)),
+    ]
+
+    assert [(a.name, a.affiliations) for a in read_authors(byline, GRID)] == [
+        ("Ashish Vaswani", ("Google Brain",)),
+        ("Noam Shazeer", ("Google Brain B",)),
+        ("Łukasz Kaiser", ("Google Lukasz",)),
+    ]
+
+
+def test_several_affiliation_blocks_under_one_byline_all_belong_to_it() -> None:
+    byline = [
+        named("A and B", (49, 100, 291, 110)),
+        affiliated("Lab X", (49, 120, 291, 128)),
+        affiliated("Lab Y", (49, 130, 291, 138)),
+    ]
+
+    assert [a.affiliations for a in read_authors(byline, PROFILE)] == [("Lab X", "Lab Y")] * 2
+
+
+def test_an_affiliation_with_no_name_above_it_goes_to_the_authors_without_one() -> None:
+    byline = [
+        affiliated("Lab X", (49, 50, 291, 58)),
+        named("A", (49, 100, 291, 110), "Lab A"),
+        named("B", (300, 100, 500, 110)),
+    ]
+
+    assert [(a.name, a.affiliations) for a in read_authors(byline, PROFILE)] == [
+        ("A", ("Lab A",)),
+        ("B", ("Lab X",)),
+    ]
+
+
+def test_the_corresponding_marker_does_not_become_a_note_marker() -> None:
+    assert summary(read_authors([named("M. Sivagami*")], PROFILE)) == [
+        ("M. Sivagami", (), True, ())
+    ]
+
+
+def test_a_byline_with_no_names_gives_no_authors() -> None:
+    assert read_authors([], PROFILE) == ()
+    assert read_authors([affiliated("Lab X", (0, 0, 1, 1))], PROFILE) == ()
+
+
+# The lines of one byline block
+
+EMAILS = replace(GRID, metadata=replace(GRID.metadata, email=r"\S+@\S+\.\w+"))
+
+
+def line_of(text: str, font: str, size: float, top: float, page: int = 2) -> Line:
+    box = (49.0, top, 200.0, top + size)
+    return Line(spans=(Span(text=text, bbox=box, page=page, font=font, size=size),), bbox=box)
+
+
+def block_of(*lines: Line, page: int = 2) -> TextBlock:
+    return TextBlock(lines=lines, bbox=union(line.bbox for line in lines), page=page)
+
+
+MONO = "SFTT1000"
+
+
+def test_a_block_splits_into_name_affiliation_and_email_by_style() -> None:
+    block = block_of(
+        line_of("Niki Parmar∗", SANS, 10.0, 234),
+        line_of("Google Research", BODY, 10.0, 246),
+        line_of("nikip@google.com", MONO, 10.0, 258),
+    )
+
+    found = byline_block(block, "authors", EMAILS, None)
+
+    assert (found.names, found.affiliation) == ("Niki Parmar∗", "Google Research")
+    assert found.bbox == block.bbox
+
+
+def test_names_that_wrap_onto_a_second_line_stay_names() -> None:
+    block = block_of(
+        line_of("Y. Nibila, M. Sivagami, A. Longname,", SANS, 10.0, 100),
+        line_of("B. Another and C. Last", SANS, 10.0, 112),
+    )
+
+    found = byline_block(block, "authors", PROFILE, None)
+
+    assert found.names == "Y. Nibila, M. Sivagami, A. Longname, B. Another and C. Last"
+    assert found.affiliation == ""
+
+
+def test_an_affiliation_block_has_no_names() -> None:
+    block = block_of(
+        line_of("Google Brain", BODY, 10.0, 246), line_of("avaswani@google.com", MONO, 10.0, 258)
+    )
+
+    found = byline_block(block, "affiliation", EMAILS, None)
+
+    assert (found.names, found.affiliation) == ("", "Google Brain")
+
+
+def test_without_an_email_rule_nothing_is_dropped_as_an_email() -> None:
+    block = block_of(line_of("Google Brain", BODY, 10.0, 246), line_of("a@b.com", MONO, 10.0, 258))
+
+    assert byline_block(block, "affiliation", GRID, None).affiliation == "Google Brain a@b.com"
+
+
+def test_a_grid_through_the_whole_adapter() -> None:
+    def author(left: float, name: str, affiliation: str, email: str) -> TextBlock:
+        return block_of(
+            *(
+                replace(line, bbox=(left, line.bbox[1], left + 90, line.bbox[3]))
+                for line in (
+                    line_of(name, SANS, 10.7, 234, page=1),
+                    line_of(affiliation, "MuseoSans-300", 7.0, 247, page=1),
+                    line_of(email, MONO, 7.0, 256, page=1),
+                )
+            ),
+            page=1,
+        )
+
+    page = page_data(
+        author(115, "Ada One∗", "Lab X", "a@x.org"),
+        author(205, "Ben Two†", "Lab X", "b@x.org"),
+        author(310, "Cy Three", "Lab Y", "c@y.org"),
+        author(410, "Di Four", "Lab Z", "d@z.org"),
+        number=1,
+    )
+
+    doc = assemble([page], EMAILS, crop=CROP, pdf_metadata={})
+
+    assert summary(doc.meta.authors) == [
+        ("Ada One", ("Lab X",), False, ("∗",)),
+        ("Ben Two", ("Lab X",), False, ("†",)),
+        ("Cy Three", ("Lab Y",), False, ()),
+        ("Di Four", ("Lab Z",), False, ()),
+    ]
+
+
+# The arXiv stamp and the venue line
+
+STAMPS = replace(
+    PROFILE,
+    metadata=replace(
+        PROFILE.metadata,
+        arxiv_id=r"arXiv:(?P<arxiv_id>\d{4}\.\d{4,5})(?:v\d+)?",
+        venue=r"(?P<venue>\d+(?:st|nd|rd|th) Conference on Neural Information Processing Systems"
+        r" \(NIPS \d{4}\))",
+    ),
+)
+
+
+def test_the_arxiv_id_and_the_venue_are_read_from_the_first_page() -> None:
+    texts = [
+        "Attention Is All You Need",
+        "arXiv:1706.03762v7  [cs.CL]  2 Aug 2023",
+        "31st Conference on Neural Information Processing Systems (NIPS 2017), Long Beach, CA.",
+    ]
+
+    assert read_stamps(texts, STAMPS) == (
+        "1706.03762",
+        "31st Conference on Neural Information Processing Systems (NIPS 2017)",
+    )
+
+
+def test_without_rules_no_stamps_are_read() -> None:
+    assert read_stamps(["arXiv:1706.03762v7 [cs.CL]"], PROFILE) == ("", "")
+
+
+def test_stamps_fill_the_meta_and_the_citation_wins_for_the_journal() -> None:
+    front = FrontMatter(arxiv_id="1706.03762", venue="NIPS 2017")
+
+    meta = build_meta(front, {}, STAMPS)
+
+    assert (meta.arxiv_id, meta.journal) == ("1706.03762", "NIPS 2017")
+
+    cited = FrontMatter(
+        citation="Nibila Y (2026) A review. Front. Artif. Intell. 9:1748985. doi: 10.3389/x.1.",
+        venue="NIPS 2017",
+    )
+    assert build_meta(cited, {}, PROFILE).journal == "Front. Artif. Intell."
 
 
 def test_keywords_lose_the_label() -> None:

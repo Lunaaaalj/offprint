@@ -89,6 +89,7 @@ def _outcomes(
         "figure.foreign_caption": checks.figure_foreign_caption(doc, evidence, config),
         "reference.numbering": checks.reference_numbering(doc, config),
         "meta.required": checks.meta_required(doc),
+        "meta.author_name": checks.meta_author_names(doc, config),
         **checks.problem_outcomes(validate(doc), _IR_CODES),
         **checks.problem_outcomes(epub.problems if epub else (), _CONVERSION_CODES),
         # A cover that fails these stops the conversion, so one that exists has passed them.

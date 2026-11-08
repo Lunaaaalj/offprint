@@ -14,7 +14,7 @@ from typing import Any
 from offprint.ir import model
 from offprint.ir.model import Asset, Document
 
-IR_VERSION = 1
+IR_VERSION = 2
 
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _TYPES = {

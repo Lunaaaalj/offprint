@@ -18,6 +18,7 @@ class QaConfig:
     foreign_caption_overlap: float
     reference_marker: str
     reference_numbered_share: float
+    author_name_noise: str
     epubcheck_timeout: float
     warn_weight: float
 
@@ -34,6 +35,7 @@ def _build(data: dict[str, Any]) -> QaConfig:
         foreign_caption_overlap=data["figures"]["foreign_caption_overlap"],
         reference_marker=data["references"]["marker"],
         reference_numbered_share=data["references"]["numbered_share"],
+        author_name_noise=data["authors"]["name_noise"],
         epubcheck_timeout=data["epubcheck"]["timeout_seconds"],
         warn_weight=data["score"]["warn_weight"],
     )

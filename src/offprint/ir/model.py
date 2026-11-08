@@ -123,8 +123,11 @@ class Reference:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Author:
     name: str
-    affiliation: str | None = None
+    affiliations: tuple[str, ...] = ()
+    """The author's own affiliations, one institution each, in the order the source gives them."""
     corresponding: bool = False
+    markers: tuple[str, ...] = ()
+    """The marks that tie the author to a note, such as `∗` or `†`. Not part of the name."""
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

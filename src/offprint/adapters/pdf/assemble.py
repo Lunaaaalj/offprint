@@ -13,7 +13,7 @@ from offprint.adapters.pdf.equations import (
 from offprint.adapters.pdf.extract import PageData
 from offprint.adapters.pdf.figures import figure_region, include_labels
 from offprint.adapters.pdf.layout import Column, column_of, reading_order
-from offprint.adapters.pdf.metadata import FrontMatter, build_meta
+from offprint.adapters.pdf.metadata import BylineBlock, FrontMatter, build_meta, read_stamps
 from offprint.adapters.pdf.roles import block_role, block_text, first_span
 from offprint.adapters.pdf.tables import (
     clean_table,
@@ -43,7 +43,7 @@ from offprint.cleanup import (
 )
 from offprint.cleanup.geometry import contains, touches, union
 from offprint.cleanup.text import KeepHyphen, excerpt
-from offprint.extraction import ExtractedTable, Span, TableCell, TextBlock
+from offprint.extraction import ExtractedTable, Line, Span, TableCell, TextBlock
 from offprint.ir import (
     Asset,
     BBox,
@@ -144,6 +144,41 @@ def _words(spans: Sequence[Span], profile: Profile) -> tuple[Span, ...]:
 def _block_runs(block: TextBlock, profile: Profile, keep_hyphen: KeepHyphen | None) -> Runs:
     lines = (_words(line.spans, profile) for line in block.lines)
     return spans_to_runs(list(lines), TextOptions(keep_hyphen=keep_hyphen))
+
+
+def _line_text(line: Line) -> str:
+    return clean_text("".join(span.text for span in line.spans)).strip()
+
+
+def _line_style(line: Line) -> tuple[str, float]:
+    first = next(span for span in line.spans if span.text.strip())
+    return first.font, first.size
+
+
+def byline_block(
+    block: TextBlock, role: str, profile: Profile, keep_hyphen: KeepHyphen | None
+) -> BylineBlock:
+    """Split a block of the byline into the names and the affiliation, without email lines.
+
+    In an `authors` block the lines in the style of the first one are the names, and the others are
+    the affiliation. An `affiliation` block is all affiliation.
+    """
+    email = profile.metadata.email
+    lines = [
+        line
+        for line in block.lines
+        if _line_text(line) and (email is None or re.search(email, _line_text(line)) is None)
+    ]
+    names = 0
+    if role == "authors" and lines:
+        style = _line_style(lines[0])
+        names = next((n for n, line in enumerate(lines) if _line_style(line) != style), len(lines))
+
+    def text(chosen: Sequence[Line]) -> str:
+        words = [separate_words(line.spans, profile.text.word_gap) for line in chosen]
+        return plain_text(spans_to_runs(words, TextOptions(keep_hyphen=keep_hyphen)))
+
+    return BylineBlock(names=text(lines[:names]), affiliation=text(lines[names:]), bbox=block.bbox)
 
 
 def merge_caption_fragments(blocks: Sequence[TextBlock], profile: Profile) -> list[TextBlock]:
@@ -441,6 +476,7 @@ class _Emitter:
         self.assets: dict[str, Asset] = {}
         self.provenance: dict[str, Provenance] = {}
         self.front: dict[str, str] = {}
+        self.byline: list[BylineBlock] = []
         self.abstract: Runs = ()
         self.counter = 0
 
@@ -491,7 +527,7 @@ class _Emitter:
         elif role == "title":
             self.front["title"] = plain_text(runs)
         elif role in ("authors", "affiliation"):
-            self.front[role] = plain_text(runs)
+            self.byline.append(byline_block(element.block, role, self.profile, self.keep_hyphen))
         elif role == "keywords":
             self.front["keywords"] = plain_text(runs)
         elif role == "abstract":
@@ -648,7 +684,15 @@ def assemble(
     for element in join_tables(elements, profile):
         emitter.emit(element)
 
-    front = FrontMatter(abstract=emitter.abstract, **emitter.front)
+    first_page = (block_text(block) for block in pages[0].blocks) if pages else ()
+    arxiv_id, venue = read_stamps(first_page, profile)
+    front = FrontMatter(
+        abstract=emitter.abstract,
+        byline=tuple(emitter.byline),
+        arxiv_id=arxiv_id,
+        venue=venue,
+        **emitter.front,
+    )
     doc = Document(
         meta=build_meta(front, pdf_metadata, profile),
         blocks=tuple(emitter.blocks),

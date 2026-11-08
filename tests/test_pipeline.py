@@ -93,7 +93,7 @@ def crossref_meta() -> Meta:
 
 EXTRACTED = Meta(
     title="Extracted title",
-    authors=(Author(name="A. Author", affiliation="Somewhere", corresponding=True),),
+    authors=(Author(name="A. Author", affiliations=("Somewhere",), corresponding=True),),
     journal="Front. Artif. Intell.",
     year=2025,
     volume="8",

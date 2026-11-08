@@ -87,9 +87,9 @@ def full_meta() -> Meta:
     return Meta(
         title="A <Study> & More",
         authors=(
-            Author(name="Ada Lovelace", affiliation="Analytical Engine Lab"),
-            Author(name="Alan Turing", affiliation="Analytical Engine Lab", corresponding=True),
-            Author(name="Grace Hopper", affiliation="Navy & Co"),
+            Author(name="Ada Lovelace", affiliations=("Analytical Engine Lab",)),
+            Author(name="Alan Turing", affiliations=("Analytical Engine Lab",), corresponding=True),
+            Author(name="Grace Hopper", affiliations=("Navy & Co",)),
         ),
         journal="Journal of <Tests>",
         year=2026,
@@ -221,7 +221,7 @@ def test_front_matter_comes_from_meta_and_leading_blocks(tmp_path):
     body = book.xml("front-matter.xhtml")
     text = text_of(body)
     assert text_of(find(body, "h1")[0]) == "A <Study> & More"
-    assert "Ada Lovelace, Alan Turing, Grace Hopper" in text
+    assert "Ada Lovelace1, Alan Turing1, Grace Hopper2" in text
     assert text.count("Analytical Engine Lab") == 1
     assert "Navy & Co" in text
     assert "We study things." in text
@@ -500,6 +500,64 @@ def test_a_wide_table_gets_a_class_from_its_column_count(tmp_path, columns, expe
     assert find(root, "table")[0].get("class") == expected
 
 
+def byline(tmp_path, *authors):
+    doc = doc_of(meta=Meta(title="T", authors=authors))
+    body = render(tmp_path, doc).xml("front-matter.xhtml")
+    authors_line = next(p for p in find(body, "p") if p.get("class") == "authors")
+    affiliations = [p for p in find(body, "p") if p.get("class") == "affiliation"]
+    return authors_line, affiliations
+
+
+def test_with_several_affiliations_each_is_numbered_and_each_author_shows_theirs(tmp_path):
+    line, affiliations = byline(
+        tmp_path,
+        Author(name="A", affiliations=("Lab X",)),
+        Author(name="B", affiliations=("Lab X", "Lab Y")),
+    )
+
+    assert [(sup.text or "") for sup in line.iter(f"{XHTML}sup")] == ["1", "1,2"]
+    assert text_of(line) == "A1, B1,2"
+    assert [text_of(p) for p in affiliations] == ["1 Lab X", "2 Lab Y"]
+
+
+def test_with_one_affiliation_nothing_is_numbered(tmp_path):
+    line, affiliations = byline(
+        tmp_path,
+        Author(name="A", affiliations=("Lab X",)),
+        Author(name="B", affiliations=("Lab X",)),
+    )
+
+    assert text_of(line) == "A, B"
+    assert [text_of(p) for p in affiliations] == ["Lab X"]
+
+
+def test_markers_follow_the_name_but_stay_out_of_the_creator(tmp_path):
+    doc = doc_of(
+        meta=Meta(
+            title="T",
+            authors=(Author(name="Aidan Gomez", markers=("∗", "†")), Author(name="B")),
+        )
+    )
+    book = render(tmp_path, doc)
+
+    line = next(p for p in find(book.xml("front-matter.xhtml"), "p") if p.get("class") == "authors")
+    creators = [e.text for e in book.xml("content.opf").iter(f"{DC}creator")]
+
+    assert text_of(line) == "Aidan Gomez∗,†, B"
+    assert creators == ["Aidan Gomez", "B"]
+
+
+def test_an_author_with_no_affiliation_shows_no_number(tmp_path):
+    line, _ = byline(
+        tmp_path,
+        Author(name="A", affiliations=("Lab X",)),
+        Author(name="B"),
+        Author(name="C", affiliations=("Lab Y",)),
+    )
+
+    assert text_of(line) == "A1, B, C2"
+
+
 def test_empty_table_has_no_empty_sections(tmp_path):
     doc = doc_of(Table(id="t", number="1", caption=(), header=(), rows=()))
     assert find(render(tmp_path, doc).xml("front-matter.xhtml"), "table") == []
@@ -728,7 +786,7 @@ def test_clean_text_reports_nothing(tmp_path):
 def test_control_characters_in_metadata_are_stripped_everywhere(tmp_path):
     meta = Meta(
         title="Ti\x01tle",
-        authors=(Author(name="An\x02n", affiliation="La\x03b"),),
+        authors=(Author(name="An\x02n", affiliations=("La\x03b",)),),
         journal="J\x04",
         doi="10.1/a\x05b",
         license=License(spdx="CC\x06", holder="H\x07"),
