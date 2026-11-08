@@ -4,9 +4,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from offprint.adapters.pdf.layout import Column, column_of, column_range
-from offprint.cleanup.geometry import grow, union
+from offprint.cleanup.geometry import grow, touches, union
 from offprint.ir import BBox
-from offprint.profiles.schema import Profile
+from offprint.profiles.schema import LabelRules, Profile
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -91,3 +91,22 @@ def figure_region(
             caption[1] - figures.fallback_bottom_margin,
         )
     return FigureRegion(bbox=bbox, column=column)
+
+
+def include_labels(crop: BBox, texts: Sequence[tuple[BBox, int]], rules: LabelRules) -> BBox:
+    """Grow a figure's crop to take in the short text blocks that touch it or sit close to it.
+
+    `texts` are the page's text blocks as (box, word count). A drawn figure's labels are text, not
+    shapes, so the union of the shapes leaves them out. A block next to a label counts too, but a
+    block of more than `rules.max_words` words is a paragraph, whatever its place.
+    """
+    labels = [box for box, words in texts if words <= rules.max_words]
+    grown = True
+    while grown:
+        grown = False
+        for box in list(labels):
+            if touches(grow(box, rules.gap), crop):
+                crop = union((crop, box))
+                labels.remove(box)
+                grown = True
+    return crop

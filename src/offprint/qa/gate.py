@@ -34,7 +34,7 @@ _IR_CODES = (
 )
 # Problems the adapter, the equation stage and the renderer reported, in `EpubResult.problems`.
 _CONVERSION_CODES = tuple(
-    check.id for check in CHECKS if check.id.startswith(("epub.", "jats.", "math."))
+    check.id for check in CHECKS if check.id.startswith(("epub.", "jats.", "math.", "pdf."))
 )
 _COVER_CODES = tuple(check.id for check in CHECKS if check.id.startswith("cover."))
 

@@ -17,6 +17,7 @@ from offprint.cleanup import (
     strip_control_characters,
     vocabulary,
 )
+from offprint.cleanup.text import excerpt
 from offprint.extraction import Span
 from offprint.ir import Bold, Italic, Sub, Sup, Text
 
@@ -386,3 +387,14 @@ def test_a_comma_inside_a_subscript_stays() -> None:
 
 def test_a_script_of_only_punctuation_is_plain_text() -> None:
     assert scripted(body("x"), low(","), body(" y")) == (Text("x, y"),)
+
+
+def test_an_excerpt_ends_at_a_word_and_says_it_was_cut() -> None:
+    text = " ".join(["word"] * 40)
+
+    shortened = excerpt(text, width=20)
+
+    assert shortened == "word word word word…"
+    assert len(shortened) <= 20
+    assert excerpt("a short label") == "a short label"
+    assert excerpt("  spaced \n out  ") == "spaced out"

@@ -75,6 +75,18 @@ def test_a_reference_entry_marker_is_optional(data: dict[str, Any]) -> None:
         build_profile(data, "t")
 
 
+def test_figure_labels_are_optional_and_read_from_the_profile(data: dict[str, Any]) -> None:
+    assert build_profile(data, "t").figures.labels is None
+
+    data["figures"]["labels"] = {"gap": 4, "max_words": 6}
+    labels = build_profile(data, "t").figures.labels
+    assert (labels.gap, labels.max_words) == (4.0, 6)
+
+    del data["figures"]["labels"]["max_words"]
+    with pytest.raises(ProfileError, match=r"t\.figures\.labels: missing keys \['max_words'\]"):
+        build_profile(data, "t")
+
+
 def test_a_typo_in_a_key_is_an_error(data: dict[str, Any]) -> None:
     data["page"]["split_xx"] = 1
 

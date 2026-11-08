@@ -18,6 +18,7 @@ from offprint.ir import (
     Heading,
     License,
     Meta,
+    Problem,
     Provenance,
     Reference,
     Table,
@@ -31,6 +32,7 @@ from offprint.qa.checks import (
     counts_tables,
     figure_foreign_caption,
     meta_required,
+    problem_outcomes,
     reference_numbering,
     table_empty_header,
     table_ref_rows,
@@ -97,10 +99,10 @@ def test_every_problem_code_in_the_source_is_a_check() -> None:
     codes = {
         code
         for path in sources
-        for code in re.findall(r"\"((?:epub|jats|math)\.[a-z_]+)\"", path.read_text())
+        for code in re.findall(r"\"((?:epub|jats|math|pdf)\.[a-z_]+)\"", path.read_text())
     }
 
-    assert "jats.no_front" in codes
+    assert {"jats.no_front", "pdf.dropped_text"} <= codes
     assert codes <= {check.id for check in CHECKS}
 
 
@@ -583,3 +585,30 @@ def test_the_gate_reports_the_check() -> None:
     report = run_gate(refs("[1] A.", "[3] C."))
 
     assert "reference.numbering" in {f.check for f in report.findings}
+
+
+# pdf.dropped_text
+
+
+def test_dropped_text_is_reported_with_its_place_in_the_source() -> None:
+    problem = Problem(code="pdf.dropped_text", message="left out: 'x'", page=7, bbox=BOX)
+
+    [found] = problem_outcomes([problem], ["pdf.dropped_text"])["pdf.dropped_text"].findings
+
+    assert (found.check, found.severity, found.page, found.bbox) == (
+        "pdf.dropped_text",
+        "error",
+        7,
+        BOX,
+    )
+
+
+def test_the_gate_reports_dropped_text_from_the_adapter(tmp_path: Path) -> None:
+    doc = document()
+    epub = render_epub(doc, tmp_path / "book.epub")
+    problem = Problem(code="pdf.dropped_text", message="left out: 'x'", page=7, bbox=BOX)
+
+    report = run_gate(doc, epub=replace(epub, problems=(problem,)))
+
+    assert "pdf.dropped_text" in {f.check for f in report.findings}
+    assert report.verdict == "review"

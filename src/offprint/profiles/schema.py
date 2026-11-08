@@ -122,6 +122,14 @@ class Captions:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class LabelRules:
+    gap: float
+    """A text block this close to a figure's crop, or touching it, may be part of the figure."""
+    max_words: int
+    """Only a block of this many words or fewer is a label. A paragraph is not."""
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Figures:
     zoom: float
     bounding_fonts: tuple[str, ...]
@@ -142,6 +150,9 @@ class Figures:
     """With no shapes, the crop starts this far below the bound."""
     fallback_bottom_margin: float
     """With no shapes, the crop ends this far above the caption."""
+    labels: LabelRules | None = None
+    """Take short text blocks next to the shapes into the crop, as labels drawn with the figure.
+    Without it, the crop is the shapes alone."""
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

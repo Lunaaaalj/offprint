@@ -4,7 +4,7 @@ from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from offprint.ir.model import Document, Equation, Figure, Heading, MathInline, Run, Table
+from offprint.ir.model import BBox, Document, Equation, Figure, Heading, MathInline, Run, Table
 from offprint.ir.walk import iter_runs, map_runs
 
 
@@ -13,6 +13,9 @@ class Problem:
     code: str
     message: str
     block_id: str | None = None
+    page: int | None = None
+    """Where it is in the source, for a problem that has no block."""
+    bbox: BBox | None = None
 
 
 def validate(doc: Document) -> list[Problem]:

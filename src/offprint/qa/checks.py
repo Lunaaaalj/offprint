@@ -217,6 +217,12 @@ def problem_outcomes(problems: Iterable[Problem], check_ids: Iterable[str]) -> d
     grouped: dict[str, list[Finding]] = {check_id: [] for check_id in check_ids}
     for problem in problems:
         grouped.setdefault(problem.code, []).append(
-            finding(problem.code, problem.message, block_id=problem.block_id)
+            finding(
+                problem.code,
+                problem.message,
+                block_id=problem.block_id,
+                page=problem.page,
+                bbox=problem.bbox,
+            )
         )
     return {code: Outcome(findings=tuple(found)) for code, found in grouped.items()}

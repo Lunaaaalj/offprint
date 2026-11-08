@@ -11,7 +11,7 @@ from offprint.adapters.pdf.equations import (
     is_display_equation,
 )
 from offprint.adapters.pdf.extract import PageData
-from offprint.adapters.pdf.figures import figure_region
+from offprint.adapters.pdf.figures import figure_region, include_labels
 from offprint.adapters.pdf.layout import Column, column_of, reading_order
 from offprint.adapters.pdf.metadata import FrontMatter, build_meta
 from offprint.adapters.pdf.roles import block_role, block_text, first_span
@@ -41,8 +41,8 @@ from offprint.cleanup import (
     square_rows,
     vocabulary,
 )
-from offprint.cleanup.geometry import touches, union
-from offprint.cleanup.text import KeepHyphen
+from offprint.cleanup.geometry import contains, touches, union
+from offprint.cleanup.text import KeepHyphen, excerpt
 from offprint.extraction import ExtractedTable, Span, TableCell, TextBlock
 from offprint.ir import (
     Asset,
@@ -56,6 +56,7 @@ from offprint.ir import (
     ListItem,
     Paragraph,
     ParagraphRole,
+    Problem,
     Provenance,
     Reference,
     Runs,
@@ -211,11 +212,18 @@ def _number_order(caption: _Caption) -> tuple[int, str]:
 
 def _figures(
     page: PageData,
+    blocks: Sequence[TextBlock],
     captions: Sequence[_Caption],
     bounds: Sequence[BBox],
     profile: Profile,
 ) -> list[FigureElement]:
     figures = sorted((c for c in captions if c.kind == "figure"), key=_number_order)
+    caption_blocks = {id(caption.block) for caption in captions}
+    texts = [
+        (block.bbox, len(block_text(block).split()))
+        for block in blocks
+        if id(block) not in caption_blocks
+    ]
     alts: Sequence[str | None] = page.figure_alts
     if len(alts) != len(figures):
         alts = [None] * len(figures)
@@ -230,16 +238,19 @@ def _figures(
             page_width=page.width,
             profile=profile,
         )
+        crop_box = region.bbox
+        if profile.figures.labels is not None:
+            crop_box = include_labels(crop_box, texts, profile.figures.labels)
         elements.append(
             FigureElement(
                 column=region.column,
-                top=region.bbox[1],
+                top=crop_box[1],
                 bottom=caption.block.bbox[3],
                 page=page.number,
-                bbox=union((region.bbox, caption.block.bbox)),
+                bbox=union((crop_box, caption.block.bbox)),
                 number=caption.number,
                 caption=caption.runs,
-                crop_box=region.bbox,
+                crop_box=crop_box,
                 alt=alt,
             )
         )
@@ -290,12 +301,23 @@ def _tables(
     return elements
 
 
+def _dropped(page: PageData, block: TextBlock) -> Problem:
+    text = excerpt(block_text(block))
+    return Problem(
+        code="pdf.dropped_text",
+        message=f"page {page.number}: text touching a figure or table is left out: {text!r}",
+        page=page.number,
+        bbox=block.bbox,
+    )
+
+
 def _text_elements(
     page: PageData,
     blocks: Sequence[TextBlock],
     captions: Sequence[_Caption],
     occupied: Sequence[BBox],
     profile: Profile,
+    problems: list[Problem],
 ) -> tuple[list[Element], list[EquationPiece]]:
     layout = profile.page
     caption_blocks = {id(caption.block) for caption in captions}
@@ -307,7 +329,10 @@ def _text_elements(
             continue
         if box[3] < layout.header_y or box[1] > layout.footer_y:
             continue
-        if any(touches(box, other) for other in occupied):
+        touched = [other for other in occupied if touches(box, other)]
+        if touched:
+            if not any(contains(other, box, profile.figures.edge_tolerance) for other in touched):
+                problems.append(_dropped(page, block))
             continue
         sidebar = layout.sidebar
         if sidebar is not None and page.number == sidebar.page and box[2] < sidebar.x_max:
@@ -345,16 +370,23 @@ def _text_elements(
 
 
 def page_elements(
-    page: PageData, profile: Profile, keep_hyphen: KeepHyphen | None = None
+    page: PageData,
+    profile: Profile,
+    keep_hyphen: KeepHyphen | None = None,
+    problems: list[Problem] | None = None,
 ) -> list[Element]:
-    """Find everything on a page and return it in reading order."""
+    """Find everything on a page and return it in reading order.
+
+    What the adapter can't place is added to `problems`, when the caller passes a list.
+    """
+    problems = problems if problems is not None else []
     blocks = merge_caption_fragments(page.blocks, profile)
     parsed = (read_caption(block, profile, keep_hyphen) for block in blocks)
     captions = [caption for caption in parsed if caption is not None]
     tables = trim_detections(page.tables, blocks, profile)
 
     bounds = _bounding_boxes(blocks, captions, tables, profile)
-    figures = _figures(page, captions, bounds, profile)
+    figures = _figures(page, blocks, captions, bounds, profile)
     tables = drop_detections_in_figures(tables, [f.crop_box for f in figures], profile)
     spans = [
         span for block in blocks for line in block.lines for span in line.spans if span.text.strip()
@@ -362,7 +394,7 @@ def page_elements(
     table_elements = _tables(page, tables, captions, spans, profile)
 
     occupied = [t.bbox for t in tables] + [f.crop_box for f in figures]
-    texts, pieces = _text_elements(page, blocks, captions, occupied, profile)
+    texts, pieces = _text_elements(page, blocks, captions, occupied, profile, problems)
     equations = [
         EquationElement(
             column=equation.column,
@@ -603,10 +635,15 @@ def assemble(
     *,
     crop: Crop,
     pdf_metadata: dict[str, str],
+    problems: list[Problem] | None = None,
 ) -> Document:
-    """Build the document from extracted pages. All rendering goes through `crop`."""
+    """Build the document from extracted pages. All rendering goes through `crop`.
+
+    What the adapter can't place is added to `problems`, when the caller passes a list.
+    """
+    problems = problems if problems is not None else []
     keep_hyphen = hyphen_rule(pages, profile)
-    elements = [e for page in pages for e in page_elements(page, profile, keep_hyphen)]
+    elements = [e for page in pages for e in page_elements(page, profile, keep_hyphen, problems)]
     emitter = _Emitter(profile, keep_hyphen, crop)
     for element in join_tables(elements, profile):
         emitter.emit(element)

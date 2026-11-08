@@ -10,7 +10,7 @@ import pytest
 from typer.testing import CliRunner
 
 from offprint import pipeline
-from offprint.adapters.pdf import convert_pdf, read_evidence
+from offprint.adapters.pdf import PdfResult, convert_pdf, read_evidence
 from offprint.cli import app
 from offprint.extraction import SourceEvidence
 from offprint.ir import (
@@ -473,7 +473,7 @@ def test_the_summary_fits_on_a_screen(doc: Document, evidence: SourceEvidence) -
 def test_review_exits_non_zero_but_keeps_the_book(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: tiny(authors=()))
+    monkeypatch.setattr(pipeline, "read_pdf", lambda _, **kwargs: PdfResult(tiny(authors=()), ()))
 
     result = runner.invoke(app, ["convert", str(PDF), "-o", str(tmp_path), "--no-cover"])
 
@@ -485,10 +485,26 @@ def test_review_exits_non_zero_but_keeps_the_book(
     assert (tmp_path / "paper.qa.json").is_file()
 
 
+def test_text_the_pdf_adapter_dropped_sends_the_book_to_review(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    problem = Problem(
+        "pdf.dropped_text", "page 4: text touching a figure is left out: 'x'", None, 4
+    )
+    monkeypatch.setattr(pipeline, "read_pdf", lambda _, **kwargs: PdfResult(tiny(), (problem,)))
+
+    result = runner.invoke(app, ["convert", str(PDF), "-o", str(tmp_path), "--no-cover"])
+
+    assert result.exit_code == 3
+    assert "pdf.dropped_text" in result.stderr
+    report = json.loads((tmp_path / "paper.qa.json").read_text())
+    assert [f["page"] for f in report["findings"] if f["check"] == "pdf.dropped_text"] == [4]
+
+
 def test_allow_review_overrides_the_exit_code(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: tiny(authors=()))
+    monkeypatch.setattr(pipeline, "read_pdf", lambda _, **kwargs: PdfResult(tiny(authors=()), ()))
 
     args = ["convert", str(PDF), "-o", str(tmp_path), "--no-cover", "--allow-review"]
     result = runner.invoke(app, args)
@@ -498,7 +514,7 @@ def test_allow_review_overrides_the_exit_code(
 
 
 def test_a_pass_exits_zero(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: tiny())
+    monkeypatch.setattr(pipeline, "read_pdf", lambda _, **kwargs: PdfResult(tiny(), ()))
     monkeypatch.setattr(pipeline, "_read_evidence", lambda _, _profile: None)
 
     result = runner.invoke(app, ["convert", str(PDF), "-o", str(tmp_path), "--no-cover"])

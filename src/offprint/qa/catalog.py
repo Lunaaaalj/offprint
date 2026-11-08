@@ -66,6 +66,13 @@ CHECKS: tuple[Check, ...] = (
         "a full stop may have split its entry: set `references.entry_start` in the profile.",
     ),
     Check(
+        "pdf.dropped_text",
+        "error",
+        "Text that touches a figure or table was left out and isn't inside it: a label of the "
+        "figure, or a column the table swallowed. Set `figures.labels` in the profile, or look at "
+        "the page.",
+    ),
+    Check(
         "figure.foreign_caption",
         "error",
         "The figure's box took in another caption. Check how the crop is bounded in the profile.",
