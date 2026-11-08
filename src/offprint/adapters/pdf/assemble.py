@@ -1,7 +1,7 @@
 """Turn extracted pages into an IR document: find each element, order them, emit blocks."""
 
 import re
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, MutableSet, Sequence
 from dataclasses import dataclass, replace
 
 from offprint.adapters.pdf.equations import (
@@ -41,6 +41,7 @@ from offprint.cleanup import (
     square_rows,
     vocabulary,
 )
+from offprint.cleanup.dictionary import english_words
 from offprint.cleanup.geometry import contains, touches, union
 from offprint.cleanup.text import KeepHyphen, excerpt
 from offprint.extraction import ExtractedTable, Line, Span, TableCell, TextBlock
@@ -632,10 +633,25 @@ def document_vocabulary(pages: Iterable[PageData]) -> frozenset[str]:
     return vocabulary(pieces)
 
 
-def hyphen_rule(pages: Iterable[PageData], profile: Profile) -> KeepHyphen:
+def hyphen_rule(
+    pages: Iterable[PageData], profile: Profile, unknown: MutableSet[str] | None = None
+) -> KeepHyphen:
+    """Decide line-end hyphens by the profile. In `vocabulary` mode, `unknown` collects the words
+    closed up with no evidence from the paper or the dictionary."""
     if profile.text.line_end_hyphens == "keep":
         return lambda left, right: True
-    return keep_hyphen_from_vocabulary(document_vocabulary(pages))
+    return keep_hyphen_from_vocabulary(document_vocabulary(pages), english_words(), unknown)
+
+
+def _unknown_joins(words: Iterable[str]) -> list[Problem]:
+    return [
+        Problem(
+            code="pdf.unknown_join",
+            message=f"a line-end hyphen was dropped to make {word!r}, which is neither in the "
+            "paper nor in the dictionary",
+        )
+        for word in sorted(words)
+    ]
 
 
 def _promote(doc: Document, profile: Profile) -> Document:
@@ -678,7 +694,8 @@ def assemble(
     What the adapter can't place is added to `problems`, when the caller passes a list.
     """
     problems = problems if problems is not None else []
-    keep_hyphen = hyphen_rule(pages, profile)
+    unknown: set[str] = set()
+    keep_hyphen = hyphen_rule(pages, profile, unknown)
     elements = [e for page in pages for e in page_elements(page, profile, keep_hyphen, problems)]
     emitter = _Emitter(profile, keep_hyphen, crop)
     for element in join_tables(elements, profile):
@@ -710,4 +727,5 @@ def assemble(
             entry_start=profile.references.entry_start,
         ),
     )
+    problems.extend(_unknown_joins(unknown))
     return _promote(doc, profile)

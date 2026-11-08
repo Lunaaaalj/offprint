@@ -3,7 +3,7 @@
 import re
 import textwrap
 import unicodedata
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterable, Mapping, MutableSet, Sequence
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Literal
@@ -123,11 +123,16 @@ def hyphen_break(left: str, right: str, keep_hyphen: KeepHyphen | None = None) -
     """Decide how two pieces of text meet at a line break.
 
     `join` drops the hyphen and closes up, `keep` keeps it and closes up, and `space` means this
-    isn't a hyphen break at all.
+    isn't a hyphen break at all. A capital after the hyphen is always `keep`: a word broken in two
+    has its capital at the start only, so the hyphen was in the word (`Berkeley-Parser`).
     """
     before = _LAST_WORD.search(left)
     after = _FIRST_WORD.match(right)
-    if before is None or after is None or not right[0].islower():
+    if before is None or after is None:
+        return "space"
+    if right[0].isupper():
+        return "keep"
+    if not right[0].islower():
         return "space"
     if keep_hyphen is not None and keep_hyphen(before[1], after[0]):
         return "keep"
@@ -151,20 +156,41 @@ def vocabulary(texts: Iterable[str]) -> frozenset[str]:
     return frozenset(word.casefold() for text in texts for word in _WORD.findall(text))
 
 
-def keep_hyphen_from_vocabulary(words: Iterable[str]) -> KeepHyphen:
+def keep_hyphen_from_vocabulary(
+    words: Iterable[str],
+    dictionary: Collection[str] = frozenset(),
+    unknown: MutableSet[str] | None = None,
+) -> KeepHyphen:
     """Build a `keep_hyphen` hook from words seen whole, such as the rest of the same paper.
 
-    The closed-up form wins if it was seen. Otherwise a hyphen stays if the hyphenated form was
-    seen or both sides are words. So `in-formation` closes up in a paper that has `information`,
-    while `magnetization-prepared` survives.
+    What the paper shows comes first. The closed-up form wins if it was seen, and a hyphen stays if
+    the hyphenated form was seen. Otherwise the `dictionary` decides: a closed-up word that is in it
+    closes up, and two words in it, or in the paper, keep their hyphen. So `in-formation` closes up
+    in a paper that has `information`, while `magnetization-prepared` survives, and so does
+    `sequence-aligned`, though no paper shows it whole.
+
+    A word closed up with no evidence from either is added to `unknown`, when it is given.
     """
     known = frozenset(word.casefold() for word in words)
 
     def keep_hyphen(left: str, right: str) -> bool:
         left, right = left.casefold(), right.casefold()
-        if left + right in known:
+        joined = left + right
+        if joined in known:
             return False
-        return f"{left}-{right}" in known or (left in known and right in known)
+        if f"{left}-{right}" in known:
+            return True
+        if joined in dictionary:
+            return False
+        if left in known and right in known:
+            return True
+        if not dictionary:
+            return False
+        if left in dictionary and right in dictionary:
+            return True
+        if unknown is not None:
+            unknown.add(joined)
+        return False
 
     return keep_hyphen
 

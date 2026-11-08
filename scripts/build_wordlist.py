@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""Rebuild `src/offprint/cleanup/data/words-en.txt`, the English word list for line-end hyphens.
+
+The list is the union of two SCOWL (https://wordlist.aspell.net) hunspell dictionaries, American
+and British with -ize spelling, both at SCOWL size 60, with every word expanded by the affix rules
+of its dictionary (plurals, -ing, -ed, and so on). It is lowercase, letters only, one word per line.
+
+Run it by hand, never from `convert`: it fetches two release assets. The assets are pinned by
+release and checked against the SHA-256 below, and they are read as data: nothing in them runs.
+
+    uv run python scripts/build_wordlist.py [--output PATH]
+
+To move to a newer SCOWL release, change RELEASE and PACKAGES, then review the diff of the list.
+"""
+
+import argparse
+import hashlib
+import io
+import re
+import sys
+import urllib.request
+import zipfile
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+from pathlib import Path
+
+RELEASE = "rel-2026.02.25"
+VERSION = "2026.02.25"
+URL = "https://github.com/en-wl/wordlist/releases/download/{release}/hunspell-{name}-{version}.zip"
+PACKAGES: Mapping[str, str] = {  # Dictionary name -> SHA-256 of its zip.
+    "en_US": "ac8e73310e951d88c52c2cf2ba54ceaca34f8486a81630ac8a75dc5f931179f9",
+    "en_GB-ize": "c5bdd92fc1e21da7503939fe4139f36f28f01c18ac35e2fc90b526a1b7bfb099",
+}
+DEFAULT_OUTPUT = (
+    Path(__file__).parent.parent / "src" / "offprint" / "cleanup" / "data" / "words-en.txt"
+)
+LICENSE_START = "COPYRIGHT, SOURCES, and CREDITS:"
+LICENSE_END = "Build Date:"
+
+
+@dataclass(frozen=True, slots=True)
+class Rule:
+    strip: str
+    add: str
+    condition: re.Pattern[str]
+
+
+@dataclass(frozen=True, slots=True)
+class Affix:
+    cross: bool
+    rules: tuple[Rule, ...]
+
+
+def parse_affixes(aff: str) -> tuple[dict[str, Affix], dict[str, Affix]]:
+    """Read the prefix and suffix rules of a hunspell `.aff` file, keyed by their flag."""
+    prefixes: dict[str, list[Rule]] = {}
+    suffixes: dict[str, list[Rule]] = {}
+    cross: dict[tuple[str, str], bool] = {}
+    for line in aff.splitlines():
+        parts = line.split("#")[0].split()
+        if len(parts) < 4 or parts[0] not in ("PFX", "SFX"):
+            continue
+        kind, flag = parts[0], parts[1]
+        if len(parts) == 4 and parts[2] in ("Y", "N"):
+            cross[kind, flag] = parts[2] == "Y"  # The header of a group of rules.
+            continue
+        strip, add, condition = parts[2], parts[3], parts[4] if len(parts) > 4 else "."
+        pattern = f"^{condition}" if kind == "PFX" else f"{condition}$"
+        rule = Rule("" if strip == "0" else strip, "" if add == "0" else add, re.compile(pattern))
+        (prefixes if kind == "PFX" else suffixes).setdefault(flag, []).append(rule)
+    return (
+        {flag: Affix(cross[("PFX", flag)], tuple(rules)) for flag, rules in prefixes.items()},
+        {flag: Affix(cross[("SFX", flag)], tuple(rules)) for flag, rules in suffixes.items()},
+    )
+
+
+def _suffixed(word: str, affix: Affix) -> list[str]:
+    return [
+        word[: len(word) - len(rule.strip)] + rule.add
+        for rule in affix.rules
+        if rule.condition.search(word) and word.endswith(rule.strip)
+    ]
+
+
+def _prefixed(word: str, affix: Affix) -> list[str]:
+    return [
+        rule.add + word[len(rule.strip) :]
+        for rule in affix.rules
+        if rule.condition.search(word) and word.startswith(rule.strip)
+    ]
+
+
+def expand(dic: str, aff: str) -> set[str]:
+    """Every form of every word in a hunspell dictionary, lowercase, letters only."""
+    prefixes, suffixes = parse_affixes(aff)
+    forms: set[str] = set()
+    for line in dic.splitlines()[1:]:  # The first line is the number of entries.
+        word, _, flags = line.strip().partition("/")
+        if not word:
+            continue
+        found = [word]
+        crossing = []
+        for flag in flags:
+            if flag in suffixes:
+                made = _suffixed(word, suffixes[flag])
+                found += made
+                if suffixes[flag].cross:
+                    crossing += made
+        for flag in flags:
+            if flag in prefixes:
+                found += _prefixed(word, prefixes[flag])
+                if prefixes[flag].cross:
+                    found += [p for form in crossing for p in _prefixed(form, prefixes[flag])]
+        forms.update(form.casefold() for form in found)
+    return {form for form in forms if form.isalpha()}
+
+
+def license_notice(readme: str) -> list[str]:
+    """The copyright section of a SCOWL README, without the build date that follows it."""
+    start = readme.index(LICENSE_START)
+    end = readme.index(LICENSE_END)
+    return readme[start:end].rstrip().splitlines()
+
+
+def render(words: Iterable[str], notice: Iterable[str]) -> str:
+    header = [
+        "Common English words, for deciding whether a line-end hyphen is part of a compound.",
+        "Generated by scripts/build_wordlist.py. Do not edit.",
+        "",
+        f"Source: SCOWL {VERSION} hunspell dictionaries en_US and en_GB-ize (size 60), with",
+        "their affixes expanded. https://wordlist.aspell.net",
+        "",
+        *notice,
+    ]
+    lines = [f"# {line}".rstrip() for line in header]
+    return "\n".join([*lines, *sorted(set(words))]) + "\n"
+
+
+def fetch(name: str) -> bytes:
+    url = URL.format(release=RELEASE, name=name, version=VERSION)
+    with urllib.request.urlopen(url, timeout=60) as response:  # noqa: S310 (a pinned https URL)
+        data = response.read()
+    digest = hashlib.sha256(data).hexdigest()
+    if digest != PACKAGES[name]:
+        raise SystemExit(f"{url}: expected sha256 {PACKAGES[name]}, got {digest}")
+    return data
+
+
+def read_package(data: bytes, name: str) -> tuple[str, str, str]:
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        text = {n: archive.read(n).decode("utf-8") for n in archive.namelist()}
+    return text[f"{name}.dic"], text[f"{name}.aff"], text[f"README_{name}.txt"]
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    options = parser.parse_args(argv)
+    words: set[str] = set()
+    notice: list[str] = []
+    for name in PACKAGES:
+        dic, aff, readme = read_package(fetch(name), name)
+        words |= expand(dic, aff)
+        notice = notice or license_notice(readme)
+    options.output.parent.mkdir(parents=True, exist_ok=True)
+    options.output.write_text(render(words, notice), encoding="utf-8")
+    print(f"{len(words)} words -> {options.output}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
