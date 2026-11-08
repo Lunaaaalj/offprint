@@ -106,7 +106,6 @@ def test_a_lowercase_continuation_closes_the_word() -> None:
 @pytest.mark.parametrize(
     ("left", "right"),
     [
-        ("ADNI-", "Based methods"),  # Uppercase continuation.
         ("from 10-", "20 subjects"),  # Not a word.
         ("the value -", "next"),  # A dash, not a hyphen.
         ("ordinary", "text"),  # No hyphen.
@@ -114,6 +113,22 @@ def test_a_lowercase_continuation_closes_the_word() -> None:
 )
 def test_other_breaks_only_get_a_space(left: str, right: str) -> None:
     assert dehyphenate(left, right) == f"{left} {right}"
+
+
+@pytest.mark.parametrize(
+    ("left", "right", "expected"),
+    [
+        ("ADNI-", "Based methods", "ADNI-Based methods"),
+        ("the Berkeley-", "Parser is", "the Berkeley-Parser is"),
+        ("a mid-", "February visit", "a mid-February visit"),
+    ],
+)
+def test_an_uppercase_continuation_keeps_the_hyphen_and_closes_up(
+    left: str, right: str, expected: str
+) -> None:
+    # A word broken in two keeps its capital at the start only, so a capital after the hyphen
+    # means the hyphen was in the word.
+    assert dehyphenate(left, right) == expected
 
 
 def test_the_hook_keeps_a_real_compound() -> None:
@@ -398,3 +413,56 @@ def test_an_excerpt_ends_at_a_word_and_says_it_was_cut() -> None:
     assert len(shortened) <= 20
     assert excerpt("a short label") == "a short label"
     assert excerpt("  spaced \n out  ") == "spaced out"
+
+
+# A dictionary for the words the paper doesn't show (issue #46)
+
+ENGLISH = frozenset(
+    "sequence aligned multi plicative multiplicative information in formation attention".split()
+)
+
+
+def with_dictionary(*paper: str, unknown: set[str] | None = None):
+    return keep_hyphen_from_vocabulary(paper, ENGLISH, unknown)
+
+
+def test_a_compound_of_two_words_the_paper_never_shows_whole_keeps_its_hyphen() -> None:
+    assert with_dictionary("unrelated")("sequence", "aligned") is True
+
+
+def test_a_word_in_the_dictionary_closes_up_even_if_both_halves_are_words() -> None:
+    assert with_dictionary()("multi", "plicative") is False
+    assert with_dictionary()("in", "formation") is False
+
+
+def test_a_break_inside_a_word_that_is_in_neither_closes_up() -> None:
+    assert with_dictionary()("convolu", "tional") is False
+
+
+def test_what_the_paper_shows_still_wins_over_the_dictionary() -> None:
+    assert with_dictionary("sequencealigned")("sequence", "aligned") is False
+    assert with_dictionary("multi-plicative")("multi", "plicative") is True
+
+
+def test_without_a_dictionary_nothing_changes() -> None:
+    assert keep_hyphen_from_vocabulary(["unrelated"])("sequence", "aligned") is False
+
+
+def test_a_word_closed_up_without_evidence_is_recorded() -> None:
+    unknown: set[str] = set()
+    hook = with_dictionary("unrelated", unknown=unknown)
+
+    hook("convolu", "tional")
+    hook("sequence", "aligned")  # Kept, so not recorded.
+    hook("multi", "plicative")  # In the dictionary.
+
+    assert unknown == {"convolutional"}
+
+
+def test_the_dictionary_cases_through_dehyphenate() -> None:
+    hook = with_dictionary()
+
+    assert dehyphenate("the sequence-", "aligned model", hook) == "the sequence-aligned model"
+    assert dehyphenate("convolu-", "tional layers", hook) == "convolutional layers"
+    assert dehyphenate("multi-", "plicative", hook) == "multiplicative"
+    assert dehyphenate("the Berkeley-", "Parser", hook) == "the Berkeley-Parser"

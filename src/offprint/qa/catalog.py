@@ -73,6 +73,12 @@ CHECKS: tuple[Check, ...] = (
         "the page.",
     ),
     Check(
+        "pdf.unknown_join",
+        "warn",
+        "A line-end hyphen was dropped to make a word that is neither in the paper nor in the "
+        "dictionary. Most are technical terms; look for a compound that lost its hyphen.",
+    ),
+    Check(
         "figure.foreign_caption",
         "error",
         "The figure's box took in another caption. Check how the crop is bounded in the profile.",

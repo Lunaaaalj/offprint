@@ -741,6 +741,60 @@ def test_the_keep_rule_keeps_every_line_end_hyphen() -> None:
     assert runs_of(build(page_data(block))) == ["magnetization-prepared rapid."]
 
 
+VOCABULARY = replace(PROFILE, text=replace(PROFILE.text, line_end_hyphens="vocabulary"))
+
+
+def broken_block(*lines: str) -> TextBlock:
+    spans = [
+        Span(text=text, bbox=(0, 10 * n, 9, 10 * n + 9), page=2, font=BODY, size=9.0)
+        for n, text in enumerate(lines)
+    ]
+    return TextBlock(
+        lines=tuple(Line(spans=(span,), bbox=span.bbox) for span in spans),
+        bbox=(49, 100, 291, 100 + 10 * len(lines)),
+        page=2,
+    )
+
+
+def build_with(profile, block: TextBlock, problems: list[Problem]):
+    return assemble([page_data(block)], profile, crop=CROP, pdf_metadata={}, problems=problems)
+
+
+def test_the_vocabulary_rule_uses_the_dictionary_for_words_the_paper_never_shows() -> None:
+    block = broken_block("the sequence-", "aligned model uses convolu-", "tional layers.")
+
+    doc = build_with(VOCABULARY, block, [])
+
+    assert runs_of(doc) == ["the sequence-aligned model uses convolutional layers."]
+
+
+def test_a_word_closed_up_with_no_evidence_is_reported_as_a_warning() -> None:
+    block = broken_block("the sequence-", "aligned model uses convolu-", "tional layers.")
+    problems: list[Problem] = []
+
+    build_with(VOCABULARY, block, problems)
+
+    [problem] = problems
+    assert problem.code == "pdf.unknown_join"
+    assert "convolutional" in problem.message
+
+
+def test_a_word_the_dictionary_knows_is_not_reported() -> None:
+    problems: list[Problem] = []
+
+    build_with(VOCABULARY, broken_block("a multi-", "plicative term."), problems)
+
+    assert problems == []
+
+
+def test_the_keep_rule_reports_nothing_about_joins() -> None:
+    problems: list[Problem] = []
+
+    build_with(PROFILE, broken_block("convolu-", "tional layers."), problems)
+
+    assert problems == []
+
+
 def test_the_vocabulary_rule_leaves_out_the_pieces_of_broken_words() -> None:
     first = Span(text="the for-", bbox=(0, 0, 9, 9), page=2)
     second = replace(first, text="mation of words", bbox=(0, 10, 9, 19))
