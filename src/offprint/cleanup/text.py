@@ -1,6 +1,7 @@
 """Text steps: turn what a PDF's spans hold into the text the author wrote."""
 
 import re
+import textwrap
 import unicodedata
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
@@ -67,6 +68,11 @@ class ScriptOptions:
     line's main size."""
     offset: float
     """How far, in points, its vertical centre must sit from the main text's to count."""
+
+
+def excerpt(text: str, width: int = 80) -> str:
+    """Shorten `text` to about `width` characters at a word, for a message that quotes it."""
+    return textwrap.shorten(text, width=width, placeholder="…")
 
 
 @step("strip_control_characters", "text")

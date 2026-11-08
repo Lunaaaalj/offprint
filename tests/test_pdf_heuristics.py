@@ -22,7 +22,7 @@ from offprint.adapters.pdf.equations import (
     is_display_equation,
 )
 from offprint.adapters.pdf.extract import PageData
-from offprint.adapters.pdf.figures import figure_region
+from offprint.adapters.pdf.figures import figure_region, include_labels
 from offprint.adapters.pdf.layout import column_of, reading_order
 from offprint.adapters.pdf.metadata import (
     FrontMatter,
@@ -47,11 +47,13 @@ from offprint.ir import (
     Italic,
     ListItem,
     Paragraph,
+    Problem,
     Reference,
     Table,
     Text,
 )
 from offprint.profiles import load_profile
+from offprint.profiles.schema import LabelRules
 
 PROFILE = load_profile("frontiers")
 LAYOUT = PROFILE.page
@@ -807,3 +809,116 @@ def test_a_page_of_elements_reads_in_order() -> None:
 
     assert [isinstance(e, TextElement) for e in elements] == [True, True]
     assert [e.bbox[0] for e in elements] == [49, 305]
+
+
+# Text that belongs to a figure (issue #45)
+
+LABELS = LabelRules(gap=4.0, max_words=6)
+WITH_LABELS = replace(PROFILE, figures=replace(PROFILE.figures, labels=LABELS))
+CROP_BOX = (58.0, 118.0, 282.0, 392.0)  # What the shapes (60, 120, 280, 390) give.
+
+
+def test_a_short_block_that_touches_the_crop_joins_it() -> None:
+    label = ((100.0, 108.0, 240.0, 119.0), 3)
+
+    assert include_labels(CROP_BOX, [label], LABELS) == (58.0, 108.0, 282.0, 392.0)
+
+
+def test_a_short_block_within_the_gap_joins_it() -> None:
+    label = ((100.0, 108.0, 240.0, 114.0), 3)  # 4 points above the crop.
+
+    assert include_labels(CROP_BOX, [label], LABELS)[1] == 108.0
+
+
+def test_a_short_block_past_the_gap_stays_out() -> None:
+    label = ((100.0, 100.0, 240.0, 113.0), 3)  # 5 points above.
+
+    assert include_labels(CROP_BOX, [label], LABELS) == CROP_BOX
+
+
+def test_a_paragraph_next_to_the_crop_stays_out() -> None:
+    paragraph = ((49.0, 100.0, 291.0, 119.0), 40)
+
+    assert include_labels(CROP_BOX, [paragraph], LABELS) == CROP_BOX
+
+
+def test_a_label_next_to_a_label_joins_too() -> None:
+    near = ((100.0, 108.0, 240.0, 119.0), 3)
+    next_to_it = ((100.0, 98.0, 240.0, 105.0), 2)  # 3 points above the first.
+
+    assert include_labels(CROP_BOX, [next_to_it, near], LABELS)[1] == 98.0
+
+
+def label_page(*extra: TextBlock) -> PageData:
+    return page_data(
+        text_block("FIGURE 1 A chart.", (49, 400, 291, 408), font=LABEL, size=5.5),
+        text_block("Scaled Dot-Product Attention", (100, 108, 240, 119), size=7.0),
+        *extra,
+        graphics=((60.0, 120.0, 280.0, 390.0),),
+    )
+
+
+def figure_boxes(elements) -> list[BBox]:
+    return [e.crop_box for e in elements if hasattr(e, "crop_box")]
+
+
+def test_a_label_above_a_figure_keeps_the_label_in_the_crop() -> None:
+    problems: list[Problem] = []
+
+    elements = page_elements(label_page(), WITH_LABELS, None, problems)
+
+    assert figure_boxes(elements) == [(58.0, 108.0, 282.0, 392.0)]
+    assert problems == []
+    assert not [e for e in elements if isinstance(e, TextElement)]
+
+
+def test_a_body_paragraph_above_the_figure_stays_in_the_text() -> None:
+    words = " ".join(["word"] * 30)
+    page = page_data(
+        text_block("FIGURE 1 A chart.", (49, 400, 291, 408), font=LABEL, size=5.5),
+        text_block(words, (49, 100, 291, 114)),
+        graphics=((60.0, 120.0, 280.0, 390.0),),
+    )
+
+    elements = page_elements(page, WITH_LABELS, None, [])
+
+    assert figure_boxes(elements) == [CROP_BOX]
+    assert len([e for e in elements if isinstance(e, TextElement)]) == 1
+
+
+def test_text_dropped_for_touching_a_figure_but_outside_it_is_reported() -> None:
+    problems: list[Problem] = []
+
+    elements = page_elements(label_page(), PROFILE, None, problems)
+
+    assert figure_boxes(elements) == [CROP_BOX]
+    [problem] = problems
+    assert problem.code == "pdf.dropped_text"
+    assert (problem.page, problem.bbox) == (2, (100.0, 108.0, 240.0, 119.0))
+    assert "Scaled Dot-Product Attention" in problem.message
+
+
+def test_text_inside_a_figure_is_not_reported() -> None:
+    inside = text_block("axis label", (100, 200, 140, 208), size=7.0)
+    problems: list[Problem] = []
+
+    page_elements(
+        page_data(
+            text_block("FIGURE 1 A chart.", (49, 400, 291, 408), font=LABEL, size=5.5),
+            inside,
+            graphics=((60.0, 120.0, 280.0, 390.0),),
+        ),
+        PROFILE,
+        None,
+        problems,
+    )
+
+    assert problems == []
+
+
+def test_the_adapter_hands_its_problems_to_the_caller() -> None:
+    problems: list[Problem] = []
+
+    assemble([label_page()], PROFILE, crop=CROP, pdf_metadata={}, problems=problems)
+
+    assert [p.code for p in problems] == ["pdf.dropped_text"]

@@ -16,8 +16,8 @@ from offprint.adapters.pdf import (
     LayoutError,
     NoProfileMatch,
     UnreadablePdfError,
-    convert_pdf,
     read_evidence,
+    read_pdf,
 )
 from offprint.browser import BrowserUnavailableError
 from offprint.cover import CoverLayoutError, generate_cover
@@ -145,7 +145,8 @@ def _read_document(
         if resolution.tier == "jats":
             result = convert_jats(resolution.path)
             return result.document, result.problems
-        return convert_pdf(resolution.path, profile=profile), ()
+        result = read_pdf(resolution.path, profile=profile)
+        return result.document, result.problems
     except (JatsError, LayoutError, NoProfileMatch, UnreadablePdfError) as error:
         raise ConvertError(str(error)) from error
 

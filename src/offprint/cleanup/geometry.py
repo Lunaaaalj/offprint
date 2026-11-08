@@ -41,3 +41,13 @@ def horizontal_overlap(a: BBox, b: BBox) -> float:
     if width <= 0:
         return 0.0
     return max(0.0, min(a[2], b[2]) - max(a[0], b[0])) / width
+
+
+def contains(outer: BBox, inner: BBox, tolerance: float = 0.0) -> bool:
+    """Whether `inner` lies in `outer`, give or take `tolerance` on each edge."""
+    return (
+        outer[0] - tolerance <= inner[0]
+        and outer[1] - tolerance <= inner[1]
+        and inner[2] <= outer[2] + tolerance
+        and inner[3] <= outer[3] + tolerance
+    )

@@ -4,6 +4,7 @@
 plain data in `offprint.extraction`, steered by the profile.
 """
 
+from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
@@ -19,20 +20,38 @@ from offprint.adapters.pdf.extract import (
     read_text,
 )
 from offprint.extraction import SourceEvidence
-from offprint.ir import Document, to_json, validate
+from offprint.ir import Document, Problem, to_json, validate
 from offprint.profiles import NoProfileMatch, Profile, select_profile
 
 
-def convert_pdf(path: Path, profile: Profile | None = None) -> Document:
-    """Convert a PDF to the IR. Raises `NoProfileMatch` if no profile fits its template."""
+@dataclass(frozen=True, slots=True)
+class PdfResult:
+    document: Document
+    problems: tuple[Problem, ...]
+    """What the adapter couldn't place, for the QA gate."""
+
+
+def read_pdf(path: Path, profile: Profile | None = None) -> PdfResult:
+    """Convert a PDF to the IR, with the problems found on the way.
+
+    Raises `NoProfileMatch` if no profile fits its template.
+    """
+    problems: list[Problem] = []
     with open_pdf(path) as pdf:
         profile = profile or select_profile(document_facts(pdf))
-        return assemble(
+        document = assemble(
             read_pages(pdf, profile.fonts),
             profile,
             crop=partial(crop, pdf),
             pdf_metadata=citation_metadata(pdf),
+            problems=problems,
         )
+    return PdfResult(document, tuple(problems))
+
+
+def convert_pdf(path: Path, profile: Profile | None = None) -> Document:
+    """Convert a PDF to the IR. Raises `NoProfileMatch` if no profile fits its template."""
+    return read_pdf(path, profile).document
 
 
 def emit_ir(path: Path, outdir: Path, profile: Profile | None = None) -> Path:
@@ -61,8 +80,10 @@ def read_evidence(path: Path, profile: Profile | None = None) -> SourceEvidence:
 __all__ = [
     "LayoutError",
     "NoProfileMatch",
+    "PdfResult",
     "UnreadablePdfError",
     "convert_pdf",
     "emit_ir",
     "read_evidence",
+    "read_pdf",
 ]

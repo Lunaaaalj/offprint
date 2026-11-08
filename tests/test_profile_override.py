@@ -7,7 +7,7 @@ import pytest
 from typer.testing import CliRunner
 
 from offprint import pipeline
-from offprint.adapters.pdf import convert_pdf, read_evidence
+from offprint.adapters.pdf import PdfResult, convert_pdf, read_evidence, read_pdf
 from offprint.cli import app
 from offprint.ir import from_json
 from offprint.profiles import Profile, load_profile_file
@@ -48,14 +48,14 @@ def test_epub_and_qa_use_the_same_loaded_override(
     expected_evidence = read_evidence(PDF, expected_profile)
     seen: list[Profile] = []
 
-    def convert(path: Path, profile: Profile | None = None):
+    def convert(path: Path, profile: Profile | None = None) -> PdfResult:
         assert profile == expected_profile
         seen.append(profile)
-        doc = convert_pdf(path, profile)
-        assert doc == expected_doc
+        result = read_pdf(path, profile)
+        assert result.document == expected_doc
         # Neither QA nor the CLI should re-read the file or silently auto-select.
         profile_file.unlink()
-        return doc
+        return result
 
     def evidence(path: Path, profile: Profile | None = None):
         assert profile is seen[0]
@@ -64,7 +64,7 @@ def test_epub_and_qa_use_the_same_loaded_override(
         seen.append(profile)
         return result
 
-    monkeypatch.setattr(pipeline, "convert_pdf", convert)
+    monkeypatch.setattr(pipeline, "read_pdf", convert)
     monkeypatch.setattr(pipeline, "read_evidence", evidence)
     source = str(PDF)
     if cached:

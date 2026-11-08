@@ -15,6 +15,7 @@ import pytest
 from typer.testing import CliRunner
 
 from offprint import pipeline
+from offprint.adapters.pdf import PdfResult
 from offprint.browser import BrowserUnavailableError
 from offprint.cli import app
 from offprint.cover import CoverLayoutError
@@ -324,7 +325,7 @@ def test_an_invalid_ir_is_refused_before_the_cover(
 ) -> None:
     heading = Heading(id="same", level=1, runs=(Text("One"),))
     invalid = Document(meta=Meta(title="T"), blocks=(heading, replace(heading)))
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: invalid)
+    monkeypatch.setattr(pipeline, "read_pdf", lambda _, **kwargs: PdfResult(invalid, ()))
 
     def no_cover_expected(_: Document) -> bytes:
         raise AssertionError("an invalid document reached the cover")
@@ -352,7 +353,7 @@ def test_a_failed_cover_stops_the_book_and_mentions_no_cover(
     def fail(_: Document) -> bytes:
         raise failure
 
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: TINY)
+    monkeypatch.setattr(pipeline, "read_pdf", lambda _, **kwargs: PdfResult(TINY, ()))
     monkeypatch.setattr(pipeline, "generate_cover", fail)
 
     result = run(PDF, "-o", tmp_path / "out")
@@ -370,7 +371,7 @@ def test_no_cover_skips_the_cover(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     def no_cover_expected(_: Document) -> bytes:
         raise AssertionError("--no-cover still generated a cover")
 
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: TINY)
+    monkeypatch.setattr(pipeline, "read_pdf", lambda _, **kwargs: PdfResult(TINY, ()))
     monkeypatch.setattr(pipeline, "generate_cover", no_cover_expected)
 
     result = run(PDF, "-o", tmp_path, "--no-cover", "--allow-review")
@@ -383,7 +384,7 @@ def test_no_cover_skips_the_cover(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 def test_rendering_problems_are_printed_after_the_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: TINY)
+    monkeypatch.setattr(pipeline, "read_pdf", lambda _, **kwargs: PdfResult(TINY, ()))
     monkeypatch.setattr(pipeline, "render_epub", _render_with_a_problem)
 
     result = run(PDF, "-o", tmp_path, "--no-cover", "--allow-review")
@@ -401,7 +402,7 @@ def test_the_resolvers_metadata_reaches_the_book(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     cached_entry(DOI, tmp_path, body=b"%PDF", meta=RESOLVED)
-    monkeypatch.setattr(pipeline, "convert_pdf", lambda _, **kwargs: TINY)
+    monkeypatch.setattr(pipeline, "read_pdf", lambda _, **kwargs: PdfResult(TINY, ()))
 
     result = convert_to_epub(str(DOI), tmp_path / "out", cover=False)
 
