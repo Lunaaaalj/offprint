@@ -237,6 +237,9 @@ class References:
     """The heading of the reference list. Paragraphs under it are references."""
     doi: Regex
     """Finds a reference's DOI, as group `doi`."""
+    entry_start: Regex | None = None
+    """Matches the start of each entry, for templates that mark them, such as `^\\[\\d+\\]`. Under
+    the heading, a line that doesn't match continues the entry before it, even after a full stop."""
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

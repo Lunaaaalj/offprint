@@ -7,7 +7,7 @@ from collections.abc import Iterable, Sequence
 from offprint.cleanup import plain_text
 from offprint.cleanup.geometry import area, intersection_area
 from offprint.extraction import SourceCaption, SourceEvidence
-from offprint.ir import BBox, Document, Equation, Figure, Problem, Table
+from offprint.ir import BBox, Document, Equation, Figure, Problem, Reference, Table
 from offprint.qa.catalog import BY_ID
 from offprint.qa.config import QaConfig
 from offprint.qa.model import Finding, Outcome
@@ -134,6 +134,26 @@ def table_ref_rows(doc: Document, config: QaConfig) -> Outcome:
             if re.search(config.year_pattern, first) is None:
                 message = f"table {table.number} row {index} doesn't end in a year: {first!r}"
                 found.append(finding("table.ref_rows", message, block_id=table.id))
+    return Outcome(findings=tuple(found))
+
+
+def reference_numbering(doc: Document, config: QaConfig) -> Outcome:
+    """Numbered references run 1..n once each, and none of them lacks its number."""
+    references = [block for block in doc.blocks if isinstance(block, Reference)]
+    marked = [
+        (re.match(config.reference_marker, plain_text(r.runs).strip()), r) for r in references
+    ]
+    numbered = [(found.group(1), r.id) for found, r in marked if found is not None]
+    if not references or len(numbered) < config.reference_numbered_share * len(references):
+        return Outcome(skipped="the references aren't numbered")
+    found = _sequence_findings("reference.numbering", "reference", numbered)
+    found.extend(
+        finding(
+            "reference.numbering", "a reference has no number, but the others do", block_id=r.id
+        )
+        for match, r in marked
+        if match is None
+    )
     return Outcome(findings=tuple(found))
 
 

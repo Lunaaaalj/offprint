@@ -625,6 +625,8 @@ def assemble(
             loose_roles=profile.text.loose_join_roles,
             starts_new=profile.text.bullet,
             keep_hyphen=keep_hyphen,
+            reference_heading=profile.references.heading,
+            entry_start=profile.references.entry_start,
         ),
     )
     return _promote(doc, profile)

@@ -175,3 +175,77 @@ def test_drop_prefix_of_nothing_keeps_the_runs() -> None:
 
 def test_drop_prefix_of_everything_is_empty() -> None:
     assert drop_prefix((Text("abc"),), 3) == ()
+
+
+# Reference lists (issue #47)
+
+REFERENCES = ParagraphOptions(reference_heading=r"^References$", entry_start=r"^\[\d+\]")
+
+
+def heading(id: str, text: str) -> Heading:
+    return Heading(id=id, level=1, runs=(Text(text),))
+
+
+def test_a_reference_whose_first_line_ends_in_a_full_stop_stays_one_entry() -> None:
+    doc = join_paragraphs(
+        document(
+            heading("h", "References"),
+            para("a", "[12] Dzmitry Bahdanau. Neural machine translation by jointly learning."),
+            para("b", "In International Conference on Learning Representations, 2017."),
+            para("c", "[13] Jonas Gehring. Convolutional sequence to sequence learning."),
+        ),
+        REFERENCES,
+    )
+
+    assert text_of(doc) == [
+        "[12] Dzmitry Bahdanau. Neural machine translation by jointly learning."
+        " In International Conference on Learning Representations, 2017.",
+        "[13] Jonas Gehring. Convolutional sequence to sequence learning.",
+    ]
+
+
+def test_a_line_that_starts_with_a_marker_starts_a_new_entry() -> None:
+    doc = join_paragraphs(
+        document(heading("h", "References"), para("a", "[1] A. B"), para("b", "[2] C. D")),
+        REFERENCES,
+    )
+
+    assert text_of(doc) == ["[1] A. B", "[2] C. D"]
+
+
+def test_the_entry_rule_only_applies_under_the_references_heading() -> None:
+    doc = join_paragraphs(
+        document(
+            heading("h", "Discussion"),
+            para("a", "The model works."),
+            para("b", "Training took a day."),
+        ),
+        REFERENCES,
+    )
+
+    assert text_of(doc) == ["The model works.", "Training took a day."]
+
+
+def test_a_later_heading_ends_the_reference_list() -> None:
+    doc = join_paragraphs(
+        document(
+            heading("h", "References"),
+            para("a", "[1] A. B."),
+            heading("i", "Appendix"),
+            para("b", "Extra material."),
+            para("c", "More material."),
+        ),
+        REFERENCES,
+    )
+
+    assert text_of(doc) == ["[1] A. B.", "Extra material.", "More material."]
+
+
+def test_without_an_entry_marker_references_join_as_before() -> None:
+    options = ParagraphOptions(reference_heading=r"^References$")
+    doc = join_paragraphs(
+        document(heading("h", "References"), para("a", "Smith (2019) A paper."), para("b", "Roe.")),
+        options,
+    )
+
+    assert text_of(doc) == ["Smith (2019) A paper.", "Roe."]

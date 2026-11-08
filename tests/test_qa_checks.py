@@ -19,6 +19,7 @@ from offprint.ir import (
     License,
     Meta,
     Provenance,
+    Reference,
     Table,
     Text,
 )
@@ -30,6 +31,7 @@ from offprint.qa.checks import (
     counts_tables,
     figure_foreign_caption,
     meta_required,
+    reference_numbering,
     table_empty_header,
     table_ref_rows,
 )
@@ -521,3 +523,63 @@ def test_real_epubcheck_fires_on_a_broken_book(tmp_path: Path) -> None:
     outcome = run_epubcheck(epub_file(tmp_path / "b.epub"), timeout=120, root="OEBPS")
 
     assert any(item.severity == "error" for item in outcome.findings)
+
+
+# reference.numbering
+
+
+def refs(*texts: str) -> Document:
+    return document(*(Reference(id=f"ref-{i}", runs=(Text(text),)) for i, text in enumerate(texts)))
+
+
+def test_numbered_references_that_run_1_to_n_pass() -> None:
+    outcome = reference_numbering(refs("[1] A.", "[2] B.", "[3] C."), CONFIG)
+
+    assert not outcome.findings
+    assert outcome.skipped is None
+
+
+@pytest.mark.parametrize("marker", ["[{}]", "{}.", "({})", "{})"])
+def test_the_usual_markers_count(marker: str) -> None:
+    doc = refs(*(f"{marker.format(n)} Author." for n in (1, 2)))
+
+    assert reference_numbering(doc, CONFIG).skipped is None
+
+
+def test_references_with_no_numbers_are_skipped() -> None:
+    outcome = reference_numbering(refs("Smith (2019) A paper.", "Roe (2020) Another."), CONFIG)
+
+    assert outcome.skipped is not None
+    assert not outcome.findings
+
+
+def test_a_document_without_references_is_skipped() -> None:
+    assert reference_numbering(document(), CONFIG).skipped is not None
+
+
+def test_an_entry_without_a_marker_fires() -> None:
+    # What a split entry looks like: its second half has no number.
+    doc = refs("[1] A.", "[2] B.", "In International Conference, 2017.", "[3] C.")
+
+    outcome = reference_numbering(doc, CONFIG)
+
+    assert [f.block_id for f in outcome.findings] == ["ref-2"]
+    assert "has no number" in outcome.findings[0].message
+
+
+def test_a_missing_number_fires() -> None:
+    outcome = reference_numbering(refs("[1] A.", "[2] B.", "[4] D."), CONFIG)
+
+    assert messages(outcome) == ["reference 3 is missing from the numbering"]
+
+
+def test_a_repeated_number_fires() -> None:
+    outcome = reference_numbering(refs("[1] A.", "[2] B.", "[2] C."), CONFIG)
+
+    assert messages(outcome) == ["reference 2 appears 2 times"]
+
+
+def test_the_gate_reports_the_check() -> None:
+    report = run_gate(refs("[1] A.", "[3] C."))
+
+    assert "reference.numbering" in {f.check for f in report.findings}

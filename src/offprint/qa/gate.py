@@ -87,6 +87,7 @@ def _outcomes(
         "table.empty_header": checks.table_empty_header(doc),
         "table.ref_rows": checks.table_ref_rows(doc, config),
         "figure.foreign_caption": checks.figure_foreign_caption(doc, evidence, config),
+        "reference.numbering": checks.reference_numbering(doc, config),
         "meta.required": checks.meta_required(doc),
         **checks.problem_outcomes(validate(doc), _IR_CODES),
         **checks.problem_outcomes(epub.problems if epub else (), _CONVERSION_CODES),

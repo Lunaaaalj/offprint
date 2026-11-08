@@ -16,6 +16,8 @@ class QaConfig:
     reference_headers: tuple[str, ...]
     year_pattern: str
     foreign_caption_overlap: float
+    reference_marker: str
+    reference_numbered_share: float
     epubcheck_timeout: float
     warn_weight: float
 
@@ -30,6 +32,8 @@ def _build(data: dict[str, Any]) -> QaConfig:
         reference_headers=tuple(tables["reference_headers"]),
         year_pattern=tables["year_pattern"],
         foreign_caption_overlap=data["figures"]["foreign_caption_overlap"],
+        reference_marker=data["references"]["marker"],
+        reference_numbered_share=data["references"]["numbered_share"],
         epubcheck_timeout=data["epubcheck"]["timeout_seconds"],
         warn_weight=data["score"]["warn_weight"],
     )
