@@ -14,6 +14,7 @@ def test_importing_the_package_fills_the_registry() -> None:
         "collapse_whitespace": "text",
         "dehyphenate": "text",
         "separate_words": "text",
+        "script_positions": "text",
         "spans_to_runs": "text",
         "regroup_lines": "caption",
         "merge_touching_blocks": "caption",

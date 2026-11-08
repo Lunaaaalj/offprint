@@ -20,6 +20,7 @@ from offprint.ir import (
     ListItem,
     Paragraph,
     Reference,
+    Sub,
     Table,
     from_json,
     to_json,
@@ -283,3 +284,20 @@ def test_emit_ir_names_the_closest_profile_for_an_unknown_template(tmp_path: Pat
 
     assert result.exit_code == 1
     assert "closest is 'frontiers'" in result.stderr
+
+
+def subscripts(doc: Document) -> list[str]:
+    found: list[str] = []
+    for paragraph in of_type(doc, Paragraph):
+        stack = list(paragraph.runs)
+        while stack:
+            run = stack.pop(0)
+            if isinstance(run, Sub):
+                found.append(plain_text(run.runs))
+            stack = [*getattr(run, "runs", ()), *stack]
+    return found
+
+
+def test_subscripts_are_found_from_the_geometry_of_the_spans(doc: Document) -> None:
+    # Issue #38: x_1, x_2, x_3 on page 8, then f_i, h_i, w_i and x_i. Nothing else is a subscript.
+    assert sorted(subscripts(doc)) == ["1", "2", "3", "i", "i", "i", "i", "i", "i", "i"]

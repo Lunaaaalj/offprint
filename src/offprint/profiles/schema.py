@@ -183,6 +183,14 @@ class Equations:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class ScriptRules:
+    size_ratio: float
+    """A span smaller than this share of its line's main size may be a sub- or superscript."""
+    offset: float
+    """How far, in points, its vertical centre must sit above or below the main text's."""
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class TextRules:
     paragraph_end: Regex
     """A paragraph whose text matches this is finished."""
@@ -194,6 +202,9 @@ class TextRules:
     line_end_hyphens: Literal["keep", "vocabulary"]
     """`keep` is for templates that never break words, where a hyphen at the end of a line is part
     of a compound. `vocabulary` closes up a word unless the paper's own words say otherwise."""
+    scripts: ScriptRules | None = None
+    """Where to find subscripts and superscripts from the geometry of the spans. Without it, only
+    the PDF's own superscript flag is used."""
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

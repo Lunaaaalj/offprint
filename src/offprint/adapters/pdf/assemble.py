@@ -24,6 +24,7 @@ from offprint.adapters.pdf.tables import (
 from offprint.cleanup import (
     CaptionOptions,
     ParagraphOptions,
+    ScriptOptions,
     TextOptions,
     cell_lines,
     clean_text,
@@ -34,6 +35,7 @@ from offprint.cleanup import (
     merge_touching_blocks,
     pair_captions,
     plain_text,
+    script_positions,
     separate_words,
     spans_to_runs,
     square_rows,
@@ -126,8 +128,20 @@ class _Caption:
     runs: Runs
 
 
+def find_scripts(spans: Sequence[Span], profile: Profile) -> tuple[Span, ...]:
+    """A line's spans, with the sub- and superscripts the profile asks for found from geometry."""
+    rules = profile.text.scripts
+    if rules is None:
+        return tuple(spans)
+    return script_positions(spans, ScriptOptions(size_ratio=rules.size_ratio, offset=rules.offset))
+
+
+def _words(spans: Sequence[Span], profile: Profile) -> tuple[Span, ...]:
+    return separate_words(find_scripts(spans, profile), profile.text.word_gap)
+
+
 def _block_runs(block: TextBlock, profile: Profile, keep_hyphen: KeepHyphen | None) -> Runs:
-    lines = (separate_words(line.spans, profile.text.word_gap) for line in block.lines)
+    lines = (_words(line.spans, profile) for line in block.lines)
     return spans_to_runs(list(lines), TextOptions(keep_hyphen=keep_hyphen))
 
 
@@ -154,7 +168,7 @@ def read_caption(
     for kind, pattern in (("figure", captions.figure), ("table", captions.table)):
         found = re.match(pattern, text)
         if found is not None:
-            lines = [separate_words(line, profile.text.word_gap) for line in kept if line]
+            lines = [_words(line, profile) for line in kept if line]
             runs = spans_to_runs(lines, TextOptions(keep_hyphen=keep_hyphen))
             label = len(plain_text(runs)) - len(found["text"])
             return _Caption(
@@ -414,7 +428,7 @@ class _Emitter:
     def _cell(self, cell: TableCell | None) -> Cell:
         lines = cell_lines(cell, table_options(self.profile))
         options = TextOptions(keep_hyphen=self.keep_hyphen)
-        return spans_to_runs([line.spans for line in lines], options)
+        return spans_to_runs([find_scripts(line.spans, self.profile) for line in lines], options)
 
     def heading(self, element: TextElement) -> None:
         headings = self.profile.headings

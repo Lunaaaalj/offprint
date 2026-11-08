@@ -105,6 +105,9 @@ text:
   word_gap: 1
   # This template doesn't break words: on the fixture all 15 lowercase breaks are real compounds.
   line_end_hyphens: keep
+  # Spans under 0.88 of the line's size and 0.7 pt off its centre are sub- or superscripts. On the
+  # fixture this finds x_1, x_2, x_3, f_i, h_i, w_i and x_i, and nothing else.
+  scripts: {size_ratio: 0.88, offset: 0.7}
 
 metadata:
   citation: '\((?P<year>\d{4})\)\s.*\.\s(?P<journal>Front\.\s.*?\.)\s(?P<volume>\d+):(?P<article_id>\d+)\.\s*doi:\s*(?P<doi>\S+?)\.?$'

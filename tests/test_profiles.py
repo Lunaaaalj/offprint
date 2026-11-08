@@ -48,6 +48,22 @@ def test_an_unknown_profile_lists_the_available_ones() -> None:
         load_profile("nature")
 
 
+def test_scripts_are_optional_and_read_from_the_profile(data: dict[str, Any]) -> None:
+    data["text"].pop("scripts", None)
+    assert build_profile(data, "t").text.scripts is None
+
+    data["text"]["scripts"] = {"size_ratio": 0.88, "offset": 0.7}
+    scripts = build_profile(data, "t").text.scripts
+    assert (scripts.size_ratio, scripts.offset) == (0.88, 0.7)
+
+
+def test_a_scripts_section_needs_both_thresholds(data: dict[str, Any]) -> None:
+    data["text"]["scripts"] = {"size_ratio": 0.88}
+
+    with pytest.raises(ProfileError, match=r"t\.text\.scripts: missing keys \['offset'\]"):
+        build_profile(data, "t")
+
+
 def test_a_typo_in_a_key_is_an_error(data: dict[str, Any]) -> None:
     data["page"]["split_xx"] = 1
 

@@ -2,8 +2,10 @@
 
 This is the contract between adapters and `cleanup/`. It's library-neutral, so nothing here knows
 about PyMuPDF, and template-neutral: the adapter fills `bold`, `italic` and `superscript` using its
-profile, so cleanup steps never inspect font names. `font` and `size` are kept for grouping spans
-that look alike. Coordinates are in page points, with the origin at the top left.
+profile, so cleanup steps never inspect font names. `script_positions` can reset `superscript` and
+fill `subscript` from where the span sits, since the PDF has no flag for a subscript. `font` and
+`size` are kept for grouping spans that look alike. Coordinates are in page points, with the origin
+at the top left.
 """
 
 from dataclasses import dataclass
@@ -22,6 +24,7 @@ class Span:
     bold: bool = False
     italic: bool = False
     superscript: bool = False
+    subscript: bool = False
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
