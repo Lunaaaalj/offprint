@@ -64,6 +64,17 @@ def test_a_scripts_section_needs_both_thresholds(data: dict[str, Any]) -> None:
         build_profile(data, "t")
 
 
+def test_a_reference_entry_marker_is_optional(data: dict[str, Any]) -> None:
+    assert build_profile(data, "t").references.entry_start is None
+
+    data["references"]["entry_start"] = r"^\[\d+\]"
+    assert build_profile(data, "t").references.entry_start == r"^\[\d+\]"
+
+    data["references"]["entry_start"] = "["
+    with pytest.raises(ProfileError, match=r"t\.references\.entry_start: invalid regex"):
+        build_profile(data, "t")
+
+
 def test_a_typo_in_a_key_is_an_error(data: dict[str, Any]) -> None:
     data["page"]["split_xx"] = 1
 

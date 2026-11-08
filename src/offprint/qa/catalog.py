@@ -60,6 +60,12 @@ CHECKS: tuple[Check, ...] = (
         "row wasn't joined.",
     ),
     Check(
+        "reference.numbering",
+        "error",
+        "Numbered references aren't 1..n once each, or an entry has no number. A line that ends in "
+        "a full stop may have split its entry: set `references.entry_start` in the profile.",
+    ),
+    Check(
         "figure.foreign_caption",
         "error",
         "The figure's box took in another caption. Check how the crop is bounded in the profile.",

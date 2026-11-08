@@ -26,6 +26,7 @@ Ids are stable. Each check has a severity, `error` or `warn`, and a hint for fix
 | `table.width` | error | Every row is as wide as the header. |
 | `table.empty_header` | error | No empty header cells, the symptom of a phantom column. |
 | `table.ref_rows` | error | In a table whose first header is "References", every first cell ends in a year. |
+| `reference.numbering` | error | References numbered `[n]`, `n.`, `(n)` or `n)` run 1..n once each, and none lacks its number. Skipped when fewer than half are numbered. |
 | `figure.foreign_caption` | error | A figure's box holds no other figure's or table's caption. |
 | `xhtml.wellformed` | error | Every XHTML file in the book parses, and every file in the spine is there. |
 | `epubcheck` | error (`warn` for its warnings) | The book passes `epubcheck`. Skipped when it isn't installed. |

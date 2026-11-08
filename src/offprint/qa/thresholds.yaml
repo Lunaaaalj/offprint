@@ -20,6 +20,13 @@ figures:
   # Share of another caption's box that has to lie inside a figure's box for it to count as swallowed.
   foreign_caption_overlap: 0.5
 
+references:
+  # A reference starts with its number: `[12]`, `12.`, `(12)` or `12)`. The number is group 1.
+  marker: '^[\[(]?(\d{1,4})[\].)]'
+  # The share of the references that carry a number before the list counts as numbered. Below it,
+  # the list is by author and year, and the numbering check has nothing to say.
+  numbered_share: 0.5
+
 epubcheck:
   timeout_seconds: 120
 
