@@ -30,15 +30,21 @@ class _Band:
 
 
 def column_of(box: BBox, layout: PageLayout) -> Column:
-    """A box that crosses the gutter by the margin on both sides is full width."""
-    margin = layout.full_width_margin
-    if box[0] < layout.split_x - margin and box[2] > layout.split_x + margin:
+    """A box that crosses the gutter by the margin on both sides is full width.
+
+    In a single-column layout every box is.
+    """
+    split_x, margin = layout.split_x, layout.full_width_margin
+    if split_x is None or margin is None:
         return "full"
-    return "left" if (box[0] + box[2]) / 2 < layout.split_x else "right"
+    if box[0] < split_x - margin and box[2] > split_x + margin:
+        return "full"
+    return "left" if (box[0] + box[2]) / 2 < split_x else "right"
 
 
 def column_range(column: Column, layout: PageLayout) -> Range:
-    return {"left": layout.left, "right": layout.right, "full": layout.full}[column]
+    ranges = {"left": layout.left, "right": layout.right, "full": layout.full}
+    return ranges[column] or layout.full
 
 
 def reading_order[T: Placed](elements: Sequence[T]) -> list[T]:

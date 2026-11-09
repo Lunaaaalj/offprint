@@ -74,7 +74,10 @@ def figure_region(
     top = _top_bound(caption, column, blocks, captions, profile)
     shapes = shapes_below(top)
     reach = figures.full_width_overlap
-    if any(s[0] < layout.split_x - reach and s[2] > layout.split_x + reach for s in shapes):
+    split_x = layout.split_x
+    if split_x is not None and any(
+        s[0] < split_x - reach and s[2] > split_x + reach for s in shapes
+    ):
         column = "full"
         top = _top_bound(caption, column, blocks, captions, profile)
         shapes = shapes_below(top)

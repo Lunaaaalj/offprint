@@ -44,9 +44,19 @@ def _has_number(block: TextBlock, right_edge: float, profile: Profile) -> bool:
         if at_edge and re.search(equations.trailing_number, _line_text(line)):
             return True
         for span in line.spans:
-            if re.search(equations.number, clean_text(span.text).strip()):
+            # A reference to an equation in running text is a lone "(1)" too, but mid-line.
+            at_edge = span.bbox[2] > right_edge - equations.right_edge_tolerance
+            if at_edge and re.search(equations.number, clean_text(span.text).strip()):
                 return True
     return False
+
+
+def math_font_share(block: TextBlock, fonts: Sequence[str]) -> float:
+    """The share of a block's characters, spaces aside, that are set in one of `fonts`."""
+    spans = [(span.font, len("".join(span.text.split()))) for span in _spans(block)]
+    total = sum(count for _, count in spans)
+    math = sum(count for font, count in spans if font.startswith(tuple(fonts)))
+    return math / total if total else 0.0
 
 
 def is_display_equation(block: TextBlock, column: Column, profile: Profile) -> bool:
@@ -59,7 +69,9 @@ def is_display_equation(block: TextBlock, column: Column, profile: Profile) -> b
         return False
     if len(block.lines) <= equations.max_numbered_lines and _has_number(block, right, profile):
         return True
-    if any(span.font.startswith(tuple(equations.math_fonts)) for span in _spans(block)):
+    if any(span.font.startswith(tuple(equations.math_fonts)) for span in _spans(block)) and (
+        math_font_share(block, equations.math_fonts) >= equations.math_font_share
+    ):
         return True
     text = block_text(block)
     centred = (
@@ -67,7 +79,13 @@ def is_display_equation(block: TextBlock, column: Column, profile: Profile) -> b
         and len(block.lines) <= equations.max_centred_lines
         and re.search(profile.text.bullet, text) is None
     )
-    return centred and first.size >= equations.centred_min_size and equations.centred_marker in text
+    marker = equations.centred_marker
+    return (
+        centred
+        and first.size >= equations.centred_min_size
+        and marker is not None
+        and marker in text
+    )
 
 
 def line_number(line: Line, profile: Profile) -> str | None:

@@ -86,8 +86,10 @@ def _owner(box: BBox, groups: Sequence[_Group]) -> _Group | None:
 def _people(text: str, profile: Profile) -> list[Author]:
     metadata = profile.metadata
     people = []
-    for raw in re.split(metadata.author_separator, text):
-        name = raw.replace(metadata.corresponding_marker, "")
+    marker = metadata.corresponding_marker
+    separator = metadata.author_separator
+    for raw in re.split(separator, text) if separator is not None else [text]:
+        name = raw.replace(marker, "") if marker is not None else raw
         markers = tuple(char for char in name if char in metadata.author_markers)
         for char in metadata.author_markers:
             name = name.replace(char, "")
@@ -95,7 +97,7 @@ def _people(text: str, profile: Profile) -> list[Author]:
             people.append(
                 Author(
                     name=name.strip(),
-                    corresponding=metadata.corresponding_marker in raw,
+                    corresponding=marker is not None and marker in raw,
                     markers=markers,
                 )
             )
@@ -118,12 +120,15 @@ def read_stamps(texts: Iterable[str], profile: Profile) -> tuple[str, str]:
 
 def parse_keywords(text: str, profile: Profile) -> tuple[str, ...]:
     metadata = profile.metadata
+    if metadata.keyword_prefix is None or metadata.keyword_separator is None:
+        return ()
     body = re.sub(metadata.keyword_prefix, "", text)
     return tuple(word.strip() for word in re.split(metadata.keyword_separator, body) if word)
 
 
 def parse_license(text: str, profile: Profile) -> License | None:
-    holder = re.search(profile.metadata.holder, text)
+    pattern = profile.metadata.holder
+    holder = re.search(pattern, text) if pattern is not None else None
     for rule in profile.metadata.licenses:
         if re.search(rule.pattern, text):
             return License(spdx=rule.spdx, holder=holder["holder"] if holder else None)
@@ -133,7 +138,7 @@ def parse_license(text: str, profile: Profile) -> License | None:
 def build_meta(front: FrontMatter, pdf_metadata: dict[str, str], profile: Profile) -> Meta:
     metadata = profile.metadata
     citation = clean_text(front.citation or pdf_metadata.get("subject", ""))
-    found = re.search(metadata.citation, citation.strip())
+    found = re.search(metadata.citation, citation.strip()) if metadata.citation else None
     fields = found.groupdict() if found else {}
     year = fields.get("year")
     return Meta(

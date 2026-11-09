@@ -531,6 +531,21 @@ def test_a_short_centred_block_with_an_equals_sign_is_an_equation() -> None:
     assert in_column("Accuracy = TP", (100, 100, 200, 110))
 
 
+def test_a_reference_to_an_equation_inside_a_paragraph_is_not_an_equation() -> None:
+    # A lone "(1)" span in the middle of a line is a cross-reference, not an equation number.
+    spans = (
+        Span(text="Equation", bbox=(49, 100, 90, 110), page=2, font=BODY, size=9.0),
+        Span(text=" (1)", bbox=(90, 100, 110, 110), page=2, font=BODY, size=9.0),
+        Span(
+            text=" admits a decomposition.", bbox=(110, 100, 290, 110), page=2, font=BODY, size=9.0
+        ),
+    )
+    box = (49.0, 100.0, 290.0, 110.0)
+    paragraph = TextBlock(lines=(Line(spans=spans, bbox=box),), bbox=box, page=2)
+
+    assert not is_display_equation(paragraph, "left", PROFILE)
+
+
 def test_a_run_in_heading_without_equals_is_not_an_equation() -> None:
     # "Regression Models:" was picked up before the `=` rule.
     assert not in_column("Regression Models:", (100, 100, 200, 110))
@@ -1068,6 +1083,19 @@ def test_the_citation_gives_the_bibliographic_fields() -> None:
     assert meta.license is not None
     assert (meta.license.spdx, meta.license.holder) == ("CC-BY-4.0", "Nibila and Sivagami")
     assert meta.source_tier == "pdf"
+
+
+def test_a_title_that_wraps_over_several_blocks_is_kept_whole() -> None:
+    first = text_block(
+        "Safe Reinforcement Learning via", (185, 100, 427, 117), font=SANS, size=20.92
+    )
+    second = text_block(
+        "Probabilistic Option Shielding", (195, 120, 417, 137), font=SANS, size=20.92
+    )
+
+    doc = build(page_data(first, second, number=1))
+
+    assert doc.meta.title == "Safe Reinforcement Learning via Probabilistic Option Shielding"
 
 
 def test_pdf_metadata_fills_the_gaps() -> None:

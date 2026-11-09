@@ -47,12 +47,15 @@ def trim_detections(
     tables: Sequence[ExtractedTable], blocks: Sequence[TextBlock], profile: Profile
 ) -> list[ExtractedTable]:
     """Undo detections that swallowed a text column, dropping any with no cells left."""
+    split_x = profile.page.split_x
+    if split_x is None:
+        return list(tables)
     boxes = running_text_boxes(blocks, profile)
     trimmed = (
         trim_swallowed_column(
             table,
             boxes,
-            split_x=profile.page.split_x,
+            split_x=split_x,
             min_overlap=profile.tables.swallow_overlap,
             margin=profile.tables.keep_margin,
         )
