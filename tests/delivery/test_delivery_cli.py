@@ -1,6 +1,7 @@
 """`offprint send` and `offprint convert --send`, through the command line."""
 
 import json
+import re
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -36,6 +37,12 @@ def env(tmp_path: Path, inbox: Inbox) -> dict[str, str]:
 
 def report(epub: Path, verdict: str) -> None:
     epub.with_suffix(".qa.json").write_text(json.dumps({"verdict": verdict}), encoding="utf-8")
+
+
+def squeezed(text: str) -> str:
+    """Typer boxes and colours its usage errors, and wraps them. Compare without any of that."""
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", text)
+    return "".join(char for char in plain if char.isalnum() or char in "-_")
 
 
 def run(args: list[str], env: dict[str, str]):
@@ -205,7 +212,7 @@ def test_force_and_dry_run_need_send(flag: str, env) -> None:
     result = run(["convert", "paper.pdf", flag], env)
 
     assert result.exit_code == 2
-    assert "--send" in result.output + result.stderr
+    assert "--send" in squeezed(result.output + result.stderr)
 
 
 def test_send_cannot_be_combined_with_emit_ir(env) -> None:
