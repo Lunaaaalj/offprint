@@ -1,5 +1,6 @@
 """Command-line interface: parses arguments and hands off to the pipeline stages."""
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated
 
@@ -42,7 +43,12 @@ def _emit_ir(source: Path, outdir: Path, profile: Path | None) -> None:
 
 
 def _write_epub(
-    source: str, outdir: Path, cover: bool, allow_review: bool, profile: Path | None
+    source: str,
+    outdir: Path,
+    cover: bool,
+    allow_review: bool,
+    profile: Path | None,
+    delivery: "_Delivery | None",
 ) -> None:
     # Imported here so that `--version` and `--help` don't pay for PyMuPDF and Playwright.
     from offprint.pipeline import ConvertError, convert_to_epub
@@ -55,8 +61,41 @@ def _write_epub(
         raise typer.Exit(code=1) from error
     typer.echo(result.path)
     typer.echo(summary(result.report, result.report_path), err=True)
-    if result.report.verdict == "review" and not allow_review:
+    verdict = result.report.verdict
+    if delivery is not None:
+        _deliver("convert", result.path, verdict, delivery, allow_review=allow_review)
+    elif verdict == "review" and not allow_review:
         raise typer.Exit(code=_REVIEW_EXIT_CODE)
+
+
+@dataclass(frozen=True, slots=True)
+class _Delivery:
+    force: bool
+    dry_run: bool
+
+
+def _deliver(
+    command: str, epub: Path, verdict: str | None, delivery: _Delivery, *, allow_review: bool
+) -> None:
+    from offprint.delivery import DeliveryError, VerdictBlocked
+    from offprint.pipeline import send_book
+
+    try:
+        done = send_book(epub, verdict=verdict, force=delivery.force, dry_run=delivery.dry_run)
+    except VerdictBlocked as error:
+        typer.echo(f"offprint {command}: {error}", err=True)
+        if not allow_review:
+            raise typer.Exit(code=_REVIEW_EXIT_CODE) from error
+        return
+    except DeliveryError as error:
+        typer.echo(f"offprint {command}: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    shrunk = f", images downscaled to {done.shrunk_to} px" if done.shrunk_to else ""
+    size = f"{done.message_bytes / 1e6:.1f} MB{shrunk}"
+    if done.eml is not None:
+        typer.echo(f"offprint {command}: dry run, wrote {done.eml} ({size})", err=True)
+    else:
+        typer.echo(f"offprint {command}: sent {epub.name} to {done.to} ({size})", err=True)
 
 
 @app.callback()
@@ -100,15 +139,75 @@ def convert(
     allow_review: Annotated[
         bool, typer.Option("--allow-review", help="Exit 0 even if the QA verdict is review.")
     ] = False,
+    send_to_kindle: Annotated[
+        bool,
+        typer.Option(
+            "--send", help="Email the book to your Kindle if it passed QA (see docs/delivery.md)."
+        ),
+    ] = False,
+    force: Annotated[
+        bool,
+        typer.Option("--force", help="With --send: send a book in review, or one already sent."),
+    ] = False,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="With --send: write the .eml instead of sending.")
+    ] = False,
 ) -> None:
-    """Convert a paper into an EPUB and check it. Never uses the network.
+    """Convert a paper into an EPUB and check it. Uses the network only with --send.
 
-    Exits 1 if no book could be made and 3 if the book needs review (see `<name>.qa.md`).
+    Exits 1 if no book could be made and 3 if the book needs review (see `<name>.qa.md`); a book
+    in review isn't sent unless --force.
     """
+    if (force or dry_run) and not send_to_kindle:
+        raise typer.BadParameter("--force and --dry-run only make sense with --send")
     if emit_ir:
+        if send_to_kindle:
+            raise typer.BadParameter("--send needs an EPUB, and --emit-ir doesn't write one")
         _emit_ir(Path(source), outdir, profile)
         return
-    _write_epub(source, outdir, cover=not no_cover, allow_review=allow_review, profile=profile)
+    delivery = _Delivery(force=force, dry_run=dry_run) if send_to_kindle else None
+    _write_epub(
+        source,
+        outdir,
+        cover=not no_cover,
+        allow_review=allow_review,
+        profile=profile,
+        delivery=delivery,
+    )
+
+
+@app.command()
+def send(
+    epub: Annotated[Path, typer.Argument(metavar="EPUB", help="The EPUB to send.")],
+    qa: Annotated[
+        Path | None,
+        typer.Option(
+            "--qa", metavar="QA_JSON", help="The QA report [<stem>.qa.json next to EPUB]."
+        ),
+    ] = None,
+    force: Annotated[
+        bool, typer.Option("--force", help="Send a book in review, or one already sent.")
+    ] = False,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Write the .eml next to the EPUB instead of sending.")
+    ] = False,
+) -> None:
+    """Email an EPUB to your Kindle. Only a book that passed QA is sent, unless --force.
+
+    Reads the verdict from the QA report next to the book; no report counts as not passed.
+    Exits 1 if it couldn't be sent and 3 if the verdict blocked it.
+    """
+    from offprint.delivery import DeliveryError, read_verdict
+
+    if not epub.is_file():
+        typer.echo(f"offprint send: no such file: {epub}", err=True)
+        raise typer.Exit(code=1)
+    try:
+        verdict = read_verdict(epub, qa)
+    except DeliveryError as error:
+        typer.echo(f"offprint send: {error}", err=True)
+        raise typer.Exit(code=1) from error
+    _deliver("send", epub, verdict, _Delivery(force=force, dry_run=dry_run), allow_review=False)
 
 
 @app.command()
