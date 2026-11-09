@@ -526,7 +526,10 @@ class _Emitter:
         if role in self.profile.headings.levels:
             self.heading(element)
         elif role == "title":
-            self.front["title"] = plain_text(runs)
+            # A title that wraps comes as one block per line.
+            self.front["title"] = " ".join(
+                filter(None, [self.front.get("title"), plain_text(runs)])
+            )
         elif role in ("authors", "affiliation"):
             self.byline.append(byline_block(element.block, role, self.profile, self.keep_hyphen))
         elif role == "keywords":
@@ -545,7 +548,7 @@ class _Emitter:
             ("citation", metadata.citation_block),
             ("copyright", metadata.copyright_block),
         ):
-            found = re.match(pattern, text)
+            found = re.match(pattern, text) if pattern is not None else None
             if found:
                 self.front[key] = text[found.end() :]
         self.paragraph(element, runs, "meta")

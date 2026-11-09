@@ -65,14 +65,20 @@ class PageLayout:
     """Text that ends above this is the running header."""
     footer_y: float
     """Text that starts below this is the running footer."""
-    split_x: float
-    """The middle of the gutter between the two columns."""
-    full_width_margin: float
-    """A box reaching this far past `split_x` on both sides is full width."""
-    left: Range
-    right: Range
     full: Range
+    """The text area. In a single-column template this is the only column."""
+    split_x: float | None = None
+    """The middle of the gutter between the two columns. Leave out `split_x`, `full_width_margin`,
+    `left` and `right` together for a single-column template."""
+    full_width_margin: float | None = None
+    """A box reaching this far past `split_x` on both sides is full width."""
+    left: Range | None = None
+    right: Range | None = None
     sidebar: Sidebar | None = None
+
+    @property
+    def single_column(self) -> bool:
+        return self.split_x is None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -175,6 +181,7 @@ class Equations:
     zoom: float
     grayscale: bool
     math_fonts: tuple[str, ...]
+    """A block with a span in one of these fonts is math, if the share below is met."""
     number: Regex
     """A span that is only an equation number, with group `number`."""
     trailing_number: Regex
@@ -186,11 +193,16 @@ class Equations:
     centred_indent: float
     """A centred block starts this far inside the column."""
     centred_min_size: float
-    centred_marker: str
-    """A centred block must contain this to be an equation."""
     merge_gap: float
     """Pieces closer than this vertically belong to one equation."""
     crop_margin: float
+    centred_marker: str | None = None
+    """A centred block must contain this to be an equation. Without it, a centred block needs
+    `math_font_share` instead. It can't be empty: that would match every block."""
+    math_font_share: float = 0.0
+    """The share of a block's characters that must be in `math_fonts` for the font test. In a
+    template where inline math uses the body's own fonts, set it high so a line with a few
+    symbols stays text. 0 means a single span is enough."""
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -226,20 +238,23 @@ class LicenseRule:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Metadata:
-    citation: Regex
+    """Every field is optional: a template with no citation block leaves them out."""
+
+    citation: Regex | None = None
     """Searched in the citation text, with optional groups `year`, `journal`, `volume`,
     `article_id` and `doi`."""
-    citation_block: Regex
+    citation_block: Regex | None = None
     """Matches the front-matter block that holds the citation."""
-    copyright_block: Regex
+    copyright_block: Regex | None = None
     """Matches the front-matter block that holds the copyright notice."""
-    holder: Regex
+    holder: Regex | None = None
     """Finds the copyright holder in that block, as group `holder`."""
-    licenses: tuple[LicenseRule, ...]
-    author_separator: Regex
-    corresponding_marker: str
-    keyword_prefix: Regex
-    keyword_separator: Regex
+    licenses: tuple[LicenseRule, ...] = ()
+    author_separator: Regex | None = None
+    """Splits a block of authors. Without it, each author block is one person."""
+    corresponding_marker: str | None = None
+    keyword_prefix: Regex | None = None
+    keyword_separator: Regex | None = None
     author_markers: str = ""
     """Characters that tie an author to a note, such as `∗†‡`. They are kept apart from the name."""
     email: Regex | None = None
@@ -275,8 +290,8 @@ class Profile:
     tables: Tables
     equations: Equations
     text: TextRules
-    metadata: Metadata
     references: References
+    metadata: Metadata = dataclasses.field(default_factory=Metadata)
 
 
 def build_profile(data: Any, source: str) -> Profile:
@@ -296,7 +311,27 @@ def build_profile(data: Any, source: str) -> Profile:
     ):
         if pattern is not None and key not in re.compile(pattern).groupindex:
             raise ProfileError(f"{source}.metadata.{key}: needs the groups ['{key}']")
+    _check_layout(profile.page, source)
+    if profile.equations.centred_marker == "":
+        raise ProfileError(f"{source}.equations.centred_marker: can't be empty, use null")
+    if profile.metadata.corresponding_marker == "":
+        raise ProfileError(f"{source}.metadata.corresponding_marker: can't be empty, use null")
     return profile
+
+
+def _check_layout(page: PageLayout, source: str) -> None:
+    columns = {
+        "split_x": page.split_x,
+        "full_width_margin": page.full_width_margin,
+        "left": page.left,
+        "right": page.right,
+    }
+    absent = sorted(key for key, value in columns.items() if value is None)
+    if absent and len(absent) != len(columns):
+        raise ProfileError(
+            f"{source}.page: a two-column layout needs {sorted(columns)}, missing {absent}; "
+            "leave all four out for a single column"
+        )
 
 
 def _dataclass(cls: Any, value: Any, path: str) -> Any:
