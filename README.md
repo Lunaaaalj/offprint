@@ -116,8 +116,12 @@ offprint preview build/paper.epub          # → Kindle-sized PNGs in build/pape
 | `--emit-ir` | Write `<stem>.ir.json` and `<stem>.assets/` instead of an EPUB. Takes local PDFs only. |
 | `--allow-review` | Exit 0 even if the QA verdict is `review`. |
 
+Packaged profiles are detected automatically: `frontiers` (two columns) and `neurips` (one column).
+In a profile, leave out `split_x`, `full_width_margin`, `left` and `right` for a single column, and
+leave out the `metadata` rules a template has no use for.
+
 For a template that is not detected automatically, start from a packaged profile such as
-`src/offprint/profiles/frontiers.yaml`, adapt it, and run
+`src/offprint/profiles/frontiers.yaml` or `neurips.yaml`, adapt it, and run
 `offprint convert paper.pdf --profile my-journal.yaml`. The supplied profile overrides automatic
 matching. Missing or malformed files stop conversion with a diagnostic; there is no automatic
 fallback to another profile. This does not add support for new layout types or an ML fallback.
@@ -199,4 +203,5 @@ uv run offprint --version
 
 Fixtures must be openly licensed papers (CC BY or similar), stored unmodified with a `SOURCE.md` giving the citation and license.
 The first fixture is Nibila & Sivagami (2026), *Front. Artif. Intell.* 9:1748985, CC BY 4.0.
+The second, single-column NeurIPS template, is Ascari et al. (2026), arXiv:2611.09197, CC BY 4.0.
 Generated EPUBs are for personal reading. Covers deliberately leave out publisher logos and branding.
