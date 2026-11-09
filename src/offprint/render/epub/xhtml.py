@@ -243,6 +243,18 @@ def _render_figure(block: Figure, ctx: RenderContext) -> str:
     )
 
 
+# A table with this many columns is set in a smaller size, so its numbers stay whole.
+_WIDE_COLUMNS = 8
+_VERY_WIDE_COLUMNS = 12
+
+
+def _table_class(block: Table) -> str:
+    columns = max((len(block.header), *map(len, block.rows)))
+    if columns >= _VERY_WIDE_COLUMNS:
+        return ' class="very-wide"'
+    return ' class="wide"' if columns >= _WIDE_COLUMNS else ""
+
+
 def _render_table(block: Table, ctx: RenderContext) -> str:
     def row(cells: Iterable[Runs], tag: str) -> str:
         rendered = (f"<{tag}>{render_runs(cell, ctx, block.id)}</{tag}>" for cell in cells)
@@ -251,7 +263,7 @@ def _render_table(block: Table, ctx: RenderContext) -> str:
     head = f"<thead>{row(block.header, 'th')}</thead>" if block.header else ""
     rows = "\n".join(row(cells, "td") for cells in block.rows)
     body = f"<tbody>\n{rows}\n</tbody>" if block.rows else ""
-    table = f"<table>{head}{body}</table>" if head or body else ""
+    table = f"<table{_table_class(block)}>{head}{body}</table>" if head or body else ""
     notes = ""
     if block.notes:
         notes = f'<p class="table-notes">{render_runs(block.notes, ctx, block.id)}</p>'

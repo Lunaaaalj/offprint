@@ -490,6 +490,16 @@ def test_table_markup(tmp_path):
     assert "n: sample size." in text_of(root)
 
 
+@pytest.mark.parametrize(
+    ("columns", "expected"), [(2, None), (7, None), (8, "wide"), (11, "wide"), (12, "very-wide")]
+)
+def test_a_wide_table_gets_a_class_from_its_column_count(tmp_path, columns, expected):
+    cells = tuple((Text(str(n)),) for n in range(columns))
+    table = Table(id="t", number="1", caption=(), header=cells, rows=(cells,))
+    root = render(tmp_path, doc_of(table)).xml("front-matter.xhtml")
+    assert find(root, "table")[0].get("class") == expected
+
+
 def test_empty_table_has_no_empty_sections(tmp_path):
     doc = doc_of(Table(id="t", number="1", caption=(), header=(), rows=()))
     assert find(render(tmp_path, doc).xml("front-matter.xhtml"), "table") == []
@@ -671,7 +681,8 @@ def test_cover_must_be_a_png(tmp_path):
 def test_stylesheet_is_packaged_and_linked(tmp_path):
     book = render(tmp_path, full_doc())
     css = book.text("kindle.css")
-    assert "table-layout: fixed" in css
+    assert "table-layout: auto" in css
+    assert "hyphens: manual" in css
     assert "text-indent: -1.2em" in css
     assert 'href="kindle.css"' in book.text("chapter-01.xhtml")
     assert manifest_types(book)["kindle.css"] == "text/css"

@@ -165,6 +165,8 @@ def preview(
         typer.echo(f"Linked from {linked}", err=True)
     if result.unplaced:
         typer.echo(f"{result.unplaced} findings have no page in the book.", err=True)
+    for table in result.overflowing_tables:
+        typer.echo(f"Warning: a table is wider than the page: {table}", err=True)
 
 
 @app.command()
