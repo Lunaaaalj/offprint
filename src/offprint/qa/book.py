@@ -14,6 +14,7 @@ from offprint.render.epub import BookLocation
 _CONTAINER = "META-INF/container.xml"
 _CONTAINER_NS = "{urn:oasis:names:tc:opendocument:xmlns:container}"
 _OPF_NS = "{http://www.idpf.org/2007/opf}"
+_DC_NS = "{http://purl.org/dc/elements/1.1/}"
 _XHTML_NS = "{http://www.w3.org/1999/xhtml}"
 _MARKUP_SUFFIXES = (".xhtml", ".html", ".htm")
 # Elements whose text doesn't run on into the next element's.
@@ -49,8 +50,8 @@ def _attribute(element: ElementTree.Element | None, name: str, what: str) -> str
     return value
 
 
-def read_book(path: Path) -> Book:
-    """Open an EPUB and find its reading order. Raises `BookError` if the file can't say."""
+def _read_package(path: Path) -> tuple[str, ElementTree.Element, dict[str, bytes]]:
+    """Return the OPF's path and tree, and every XHTML file, from an EPUB."""
     try:
         with zipfile.ZipFile(path) as archive:
             container = ElementTree.fromstring(archive.read(_CONTAINER))
@@ -61,7 +62,28 @@ def read_book(path: Path) -> Book:
             markup = {n: archive.read(n) for n in names if n.lower().endswith(_MARKUP_SUFFIXES)}
     except (OSError, KeyError, zipfile.BadZipFile, ElementTree.ParseError) as error:
         raise BookError(f"can't read {path.name} as an EPUB: {error}") from error
+    return opf_path, opf, markup
 
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class PackageMeta:
+    identifier: str
+    title: str
+
+
+def read_package_meta(path: Path) -> PackageMeta:
+    """Read the book's `dc:identifier` and `dc:title`. Raises `BookError` if the file can't say."""
+    _, opf, _ = _read_package(path)
+    identifier = opf.findtext(f"{_OPF_NS}metadata/{_DC_NS}identifier")
+    title = opf.findtext(f"{_OPF_NS}metadata/{_DC_NS}title")
+    if not identifier or not title:
+        raise BookError(f"{path.name} has no identifier or title in its package document")
+    return PackageMeta(identifier=identifier.strip(), title=title.strip())
+
+
+def read_book(path: Path) -> Book:
+    """Open an EPUB and find its reading order. Raises `BookError` if the file can't say."""
+    opf_path, opf, markup = _read_package(path)
     root = posixpath.dirname(opf_path)
     hrefs = {
         item.get("id"): item.get("href")

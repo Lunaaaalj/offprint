@@ -7,6 +7,8 @@ Every failure the user can act on becomes a `ConvertError`, with a message for t
 writes nothing. A book that reaches the gate is written with its report, whatever the verdict.
 """
 
+import os
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -21,6 +23,7 @@ from offprint.adapters.pdf import (
 )
 from offprint.browser import BrowserUnavailableError
 from offprint.cover import CoverLayoutError, generate_cover
+from offprint.delivery import Delivery, deliver, load_delivery_config
 from offprint.equations import typeset_math
 from offprint.extraction import SourceEvidence
 from offprint.ir import Document, Meta, Problem, SourceTier, validate
@@ -96,6 +99,23 @@ def convert_to_epub(
     except (EpubRenderError, OSError) as error:
         raise ConvertError(str(error)) from error
     return Conversion(epub.path, epub.problems, report, report_path)
+
+
+def send_book(
+    epub: Path,
+    *,
+    verdict: str | None,
+    force: bool = False,
+    dry_run: bool = False,
+    env: Mapping[str, str] | None = None,
+) -> Delivery:
+    """Send a finished book to the Kindle. A separate stage: `convert` never calls it.
+
+    Raises `DeliveryError` (`VerdictBlocked` for a book that isn't `pass`) and sends nothing.
+    """
+    env = os.environ if env is None else env
+    config = load_delivery_config(env)
+    return deliver(epub, config, verdict=verdict, force=force, dry_run=dry_run, env=env)
 
 
 def combine_meta(extracted: Meta, resolved: Meta | None) -> Meta:

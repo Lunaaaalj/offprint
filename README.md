@@ -6,7 +6,7 @@ Turn research papers into clean, reflowable Kindle books, with figures, tables, 
 
 A two-column journal PDF is unreadable on a 6-inch e-ink screen. offprint rebuilds the paper's *structure* (sections, paragraphs, figures, tables, equations, references) and writes it as an EPUB that the Kindle can reflow, restyle and navigate.
 
-> **Status: early development.** `offprint convert` turns JATS XML, or a PDF from a supported publisher template, into an EPUB with a cover, and checks the result. The LaTeX adapter and delivery are still to come.
+> **Status: early development.** `offprint convert` turns JATS XML, or a PDF from a supported publisher template, into an EPUB with a cover, and checks the result. The LaTeX adapter is still to come. `--send` emails a book that passed QA to your Kindle.
 > The roadmap is in [GitHub issues](../../issues), and implementation happens with Claude Code, issue by issue.
 
 ![Prototype output on a Kindle-sized screen](docs/kindle-preview.png)
@@ -104,9 +104,11 @@ offprint convert paper.xml -o build/       # JATS, with its images in graphics/ 
 offprint resolve 10.3389/frai.2026.1748985 # find the best source and cache it
 offprint convert 10.3389/frai.2026.1748985 # → 10.3389_frai.2026.1748985.epub, from the cache
 offprint preview build/paper.epub          # → Kindle-sized PNGs in build/paper.preview/
+offprint convert paper.pdf --send          # convert, and email it to your Kindle if it passed QA
+offprint send build/paper.epub --dry-run   # write the .eml instead of sending
 ```
 
-`convert` never uses the network. INPUT is a local PDF or JATS file, or a DOI or arXiv id that `resolve` has already cached; an uncached identifier fails and tells you to run `resolve`. If the best cached source is LaTeX, `convert` fails and names the missing adapter (#11) rather than quietly using a worse source.
+`convert` uses the network only for `--send`, after the book is made. INPUT is a local PDF or JATS file, or a DOI or arXiv id that `resolve` has already cached; an uncached identifier fails and tells you to run `resolve`. If the best cached source is LaTeX, `convert` fails and names the missing adapter (#11) rather than quietly using a worse source.
 
 | `convert` option | Effect |
 |---|---|
@@ -115,6 +117,8 @@ offprint preview build/paper.epub          # → Kindle-sized PNGs in build/pape
 | `--no-cover` | Skip the cover. Without it, a cover that can't be made (Chromium is missing, or the layout checks fail) stops the conversion. |
 | `--emit-ir` | Write `<stem>.ir.json` and `<stem>.assets/` instead of an EPUB. Takes local PDFs only. |
 | `--allow-review` | Exit 0 even if the QA verdict is `review`. |
+| `--send` | Email the book to your Kindle if it passed QA. The only option that uses the network. Needs a config file: see [`docs/delivery.md`](docs/delivery.md). |
+| `--dry-run`, `--force` | With `--send`: write the `.eml` instead of sending, or send a book in `review` or one already sent. |
 
 Packaged profiles are detected automatically: `frontiers` (two columns) and `neurips` (one column).
 In a profile, leave out `split_x`, `full_width_margin`, `left` and `right` for a single column, and
@@ -162,10 +166,11 @@ The cover, LaTeX equations and `preview` need Chromium: `uv run playwright insta
 
 `offprint preview EPUB` renders the first page, the first page with a figure, an equation and a table, and every page a QA check flagged, as PNGs plus a contact sheet, in about 2 seconds. It's an approximation of a Kindle. See [`docs/preview.md`](docs/preview.md).
 
+`offprint send EPUB` mails a book you already have, and reads its verdict from the `.qa.json` next to it. Setup (the approved sender, your Kindle address, an app password) and the 50 MB limit are in [`docs/delivery.md`](docs/delivery.md).
+
 Planned:
 
 ```sh
-offprint convert 2401.01234 --send         # convert and email to your Kindle
 offprint watch --zotero-collection "→ Kindle"
 ```
 
