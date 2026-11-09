@@ -21,6 +21,7 @@ from offprint.cleanup.tables import (
     trim_swallowed_column,
 )
 from offprint.cleanup.text import (
+    ScriptOptions,
     TextOptions,
     clean_text,
     collapse_whitespace,
@@ -28,6 +29,7 @@ from offprint.cleanup.text import (
     expand_ligatures,
     fix_combining_marks,
     keep_hyphen_from_vocabulary,
+    script_positions,
     separate_words,
     spans_to_runs,
     strip_control_characters,
@@ -38,6 +40,7 @@ __all__ = [
     "CaptionOptions",
     "CleanupStep",
     "ParagraphOptions",
+    "ScriptOptions",
     "TableOptions",
     "TextOptions",
     "cell_lines",
@@ -61,6 +64,7 @@ __all__ = [
     "plain_text",
     "regroup_lines",
     "registered",
+    "script_positions",
     "separate_words",
     "spans_to_runs",
     "square_rows",

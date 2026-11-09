@@ -3,6 +3,7 @@
 import pytest
 
 from offprint.cleanup import (
+    ScriptOptions,
     TextOptions,
     clean_text,
     collapse_whitespace,
@@ -10,13 +11,14 @@ from offprint.cleanup import (
     expand_ligatures,
     fix_combining_marks,
     keep_hyphen_from_vocabulary,
+    script_positions,
     separate_words,
     spans_to_runs,
     strip_control_characters,
     vocabulary,
 )
 from offprint.extraction import Span
-from offprint.ir import Bold, Italic, Sup, Text
+from offprint.ir import Bold, Italic, Sub, Sup, Text
 
 
 def span(text: str, **style: bool) -> Span:
@@ -244,3 +246,143 @@ def test_whitespace_only_lines_vanish() -> None:
 
 def test_span_text_is_cleaned() -> None:
     assert spans_to_runs([[span("  ﬁ\x01ne   text ")]]) == (Text("fine text"),)
+
+
+# Subscripts and superscripts, from geometry (issue #38)
+
+SCRIPTS = ScriptOptions(size_ratio=0.88, offset=0.7)
+MAIN, SMALL = 10.0, 7.0
+
+
+def placed(text: str, size: float, centre: float, **style: bool) -> Span:
+    """A span of this size whose vertical centre is `centre`, on a line centred at 5."""
+    return Span(
+        text=text,
+        bbox=(0.0, centre - size / 2, 10.0, centre + size / 2),
+        page=1,
+        size=size,
+        **style,
+    )
+
+
+def body(text: str, **style: bool) -> Span:
+    return placed(text, MAIN, 5.0, **style)
+
+
+def low(text: str) -> Span:
+    return placed(text, SMALL, 7.5)
+
+
+def high(text: str) -> Span:
+    return placed(text, SMALL, 2.5)
+
+
+def scripted(*spans: Span) -> tuple:
+    return spans_to_runs([script_positions(spans, SCRIPTS)])
+
+
+def test_a_smaller_span_below_the_line_is_a_subscript() -> None:
+    assert scripted(body("d"), low("k")) == (Text("d"), Sub((Text("k"),)))
+
+
+def test_a_subscript_can_be_a_word() -> None:
+    assert scripted(body("d"), low("model"), body(" is the width")) == (
+        Text("d"),
+        Sub((Text("model"),)),
+        Text(" is the width"),
+    )
+
+
+def test_a_subscript_and_a_superscript_on_the_same_base_both_survive() -> None:
+    assert scripted(body("W"), low("i"), high("Q")) == (
+        Text("W"),
+        Sub((Text("i"),)),
+        Sup((Text("Q"),)),
+    )
+
+
+def test_an_exponent_is_a_superscript() -> None:
+    assert scripted(body("10"), high("-9")) == (Text("10"), Sup((Text("-9"),)))
+
+
+def test_a_footnote_mark_after_a_word_is_a_superscript() -> None:
+    assert scripted(body("results"), high("1"), body(" show")) == (
+        Text("results"),
+        Sup((Text("1"),)),
+        Text(" show"),
+    )
+
+
+def test_a_script_at_the_start_of_a_line_is_judged_against_the_text_after_it() -> None:
+    assert scripted(high("1"), body("Corresponding author")) == (
+        Sup((Text("1"),)),
+        Text("Corresponding author"),
+    )
+
+
+def test_a_flagged_span_of_the_main_size_is_not_raised() -> None:
+    # The `√` that PyMuPDF flags as a superscript.
+    assert scripted(body("x = "), body("√", superscript=True), body("d")) == (Text("x = √d"),)
+
+
+def test_a_small_span_on_the_line_is_not_a_script() -> None:
+    assert scripted(body("A "), placed("SMALL", SMALL, 5.0), body(" B")) == (Text("A SMALL B"),)
+
+
+def test_a_small_span_that_is_barely_off_the_line_is_not_a_script() -> None:
+    assert scripted(body("d"), placed("k", SMALL, 5.5)) == (Text("dk"),)
+
+
+def test_a_wrong_flag_on_a_small_span_on_the_line_is_cleared() -> None:
+    assert scripted(body("d"), placed("k", SMALL, 5.0, superscript=True)) == (Text("dk"),)
+
+
+def test_a_line_of_one_size_is_unchanged() -> None:
+    spans = (body("plain "), body("text"))
+    assert script_positions(spans, SCRIPTS) == spans
+
+
+def test_the_thresholds_come_from_the_options() -> None:
+    tight = ScriptOptions(size_ratio=0.5, offset=0.7)
+    assert scripted_with(tight, body("d"), low("k")) == (Text("dk"),)
+    wide = ScriptOptions(size_ratio=0.88, offset=3.0)
+    assert scripted_with(wide, body("d"), low("k")) == (Text("dk"),)
+
+
+def scripted_with(options: ScriptOptions, *spans: Span) -> tuple:
+    return spans_to_runs([script_positions(spans, options)])
+
+
+def test_a_subscript_flag_makes_a_subscript_run() -> None:
+    assert spans_to_runs([[span("d"), span("k", subscript=True)]]) == (
+        Text("d"),
+        Sub((Text("k"),)),
+    )
+
+
+def test_the_space_after_a_subscript_stays_outside_it() -> None:
+    assert scripted(body("x"), low("i"), body(" "), body("are")) == (
+        Text("x"),
+        Sub((Text("i"),)),
+        Text(" are"),
+    )
+
+
+def test_punctuation_after_a_subscript_is_not_part_of_it() -> None:
+    assert scripted(body("x"), low("1, "), body("y")) == (
+        Text("x"),
+        Sub((Text("1"),)),
+        Text(", y"),
+    )
+
+
+def test_a_comma_inside_a_subscript_stays() -> None:
+    assert scripted(body("a"), low("i,j"), body(" b")) == (
+        Text("a"),
+        Sub((Text("i,j"),)),
+        Text(" b"),
+    )
+
+
+def test_a_script_of_only_punctuation_is_plain_text() -> None:
+    assert scripted(body("x"), low(","), body(" y")) == (Text("x, y"),)

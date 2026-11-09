@@ -9,15 +9,18 @@ from typing import Literal
 
 from offprint.cleanup.registry import step
 from offprint.extraction import Span
-from offprint.ir import Bold, Italic, Runs, Sup, Text
+from offprint.ir import Bold, Italic, Runs, Sub, Sup, Text
 
 type KeepHyphen = Callable[[str, str], bool]
 """Given the words on each side of a line-end hyphen, says whether it's a real compound."""
 
 type HyphenBreak = Literal["join", "keep", "space"]
 
-type _Style = tuple[bool, bool, bool]  # superscript, bold, italic
+type _Style = tuple[bool, bool, bool, bool]  # superscript, subscript, bold, italic
 type _Piece = tuple[_Style, str]
+
+_PLAIN: _Style = (False, False, False, False)
+_AFTER_SCRIPT = ",;:. "
 
 LIGATURES: Mapping[str, str] = MappingProxyType(
     {"ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st"}
@@ -55,6 +58,15 @@ class TextOptions:
     ligatures: Mapping[str, str] = field(default_factory=lambda: LIGATURES)
     spacing_marks: Mapping[str, str] = field(default_factory=lambda: SPACING_MARKS)
     keep_hyphen: KeepHyphen | None = None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ScriptOptions:
+    size_ratio: float
+    """A span is a candidate for a sub- or superscript when its size is under this share of the
+    line's main size."""
+    offset: float
+    """How far, in points, its vertical centre must sit from the main text's to count."""
 
 
 @step("strip_control_characters", "text")
@@ -168,6 +180,55 @@ def separate_words(spans: Sequence[Span], word_gap: float = 1.0) -> tuple[Span, 
     return tuple(separated)
 
 
+@step("script_positions", "text")
+def script_positions(spans: Sequence[Span], options: ScriptOptions) -> tuple[Span, ...]:
+    """Set `superscript` and `subscript` on a line's spans from where each one sits.
+
+    A PDF has no flag for a subscript, and the superscript flag is wrong for glyphs such as `√`.
+    So a span is a script when it is smaller than the line's main size (its largest, so that a
+    fragment like `d_model`, mostly subscript, still works) and its vertical centre is
+    more than `offset` below (subscript) or above (superscript) the nearest main-size span before
+    it, or after it for a script that starts the line. Every other span ends up with neither flag.
+    A larger inline glyph, such as a drop cap, makes the rest of its line look small.
+    The centre of a bounding box moves a little with the size of the font, so `offset` is a
+    property of the template and comes from its profile.
+    """
+    counted = [span for span in spans if span.text.strip()]
+    if not counted:
+        return tuple(spans)
+    limit = options.size_ratio * max(span.size for span in counted)
+
+    def is_main(span: Span) -> bool:
+        return bool(span.text.strip()) and span.size >= limit
+
+    result = []
+    for index, span in enumerate(spans):
+        if not span.text.strip():
+            result.append(span)
+            continue
+        placement = (False, False)
+        if span.size < limit:
+            reference = _reference(spans, index, is_main)
+            if reference is not None:
+                shift = _centre(span) - _centre(reference)
+                placement = (shift < -options.offset, shift > options.offset)
+        superscript, subscript = placement
+        if (span.superscript, span.subscript) != placement:
+            span = replace(span, superscript=superscript, subscript=subscript)
+        result.append(span)
+    return tuple(result)
+
+
+def _reference(spans: Sequence[Span], index: int, is_main: Callable[[Span], bool]) -> Span | None:
+    before = (span for span in reversed(spans[:index]) if is_main(span))
+    after = (span for span in spans[index + 1 :] if is_main(span))
+    return next(before, None) or next(after, None)
+
+
+def _centre(span: Span) -> float:
+    return (span.bbox[1] + span.bbox[3]) / 2
+
+
 @step("spans_to_runs", "text")
 def spans_to_runs(lines: Sequence[Sequence[Span]], options: TextOptions | None = None) -> Runs:
     """Turn lines of spans into IR runs: clean text, keep styling, dehyphenate between lines."""
@@ -199,29 +260,52 @@ def _styled_pieces(spans: Sequence[Span], options: TextOptions) -> list[_Piece]:
             if text and pieces:
                 pieces[-1] = (pieces[-1][0], pieces[-1][1] + " ")
         elif span.superscript:
-            pieces.append(((True, False, False), text.strip()))
+            pieces.append(((True, False, False, False), text))
+        elif span.subscript:
+            pieces.append(((False, True, False, False), text))
         else:
-            pieces.append(((False, span.bold, span.italic), text))
+            pieces.append(((False, False, span.bold, span.italic), text))
     if pieces:
         pieces[0] = (pieces[0][0], pieces[0][1].lstrip())
         pieces[-1] = (pieces[-1][0], pieces[-1][1].rstrip())
     return [piece for piece in pieces if piece[1]]
 
 
-def _to_runs(pieces: Sequence[_Piece]) -> Runs:
+def _merge(pieces: Iterable[_Piece]) -> list[_Piece]:
     merged: list[_Piece] = []
     for style, text in pieces:
         if merged and merged[-1][0] == style:
             merged[-1] = (style, merged[-1][1] + text)
         elif text:
             merged.append((style, text))
-    return tuple(_styled(style, text) for style, text in merged if text)
+    return merged
 
 
-def _styled(style: _Style, text: str) -> Text | Bold | Italic | Sup:
-    superscript, bold, italic = style
+def _outside_script(style: _Style, text: str) -> list[_Piece]:
+    """Take the spaces and closing punctuation after a script out of it: they are the sentence's.
+
+    A space before a script is dropped, so that a mark stays with its word.
+    """
+    if not (style[0] or style[1]):
+        return [(style, text)]
+    core = text.strip().rstrip(_AFTER_SCRIPT)
+    if not core:
+        return [(_PLAIN, text.lstrip())]
+    after = text[text.index(core) + len(core) :]
+    return [piece for piece in ((style, core), (_PLAIN, after)) if piece[1]]
+
+
+def _to_runs(pieces: Sequence[_Piece]) -> Runs:
+    spread = (outside for piece in _merge(pieces) for outside in _outside_script(*piece))
+    return tuple(_styled(style, text) for style, text in _merge(spread) if text)
+
+
+def _styled(style: _Style, text: str) -> Text | Bold | Italic | Sup | Sub:
+    superscript, subscript, bold, italic = style
     if superscript:
         return Sup((Text(text),))
+    if subscript:
+        return Sub((Text(text),))
     if bold and italic:
         return Bold((Italic((Text(text),)),))
     if bold:
