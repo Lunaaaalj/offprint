@@ -36,7 +36,7 @@ def test_the_frontiers_profile_loads() -> None:
     assert profile.name == "frontiers"
     assert profile.page.split_x == 297.5
     assert profile.captions.table_side == "above"
-    assert available_profiles() == ("frontiers",)
+    assert available_profiles() == ("frontiers", "neurips")
 
 
 def test_a_profile_loads_from_a_file() -> None:
@@ -175,6 +175,25 @@ def test_no_match_names_the_closest_profile_and_what_failed() -> None:
         select_profile(facts)
 
     assert "font MuseoSans" in str(caught.value)
+
+
+def test_the_neurips_profile_is_single_column() -> None:
+    profile = load_profile("neurips")
+
+    assert profile.name == "neurips"
+    assert profile.page.single_column
+    assert profile.equations.centred_marker is None
+    assert profile.metadata.licenses == ()
+
+
+def test_each_template_selects_only_its_own_profile() -> None:
+    neurips = DocumentFacts(
+        fonts=frozenset({"NimbusRomNo9L-Regu", "NimbusRomNo9L-Medi"}),
+        text="40th Conference on Neural Information Processing Systems (NeurIPS 2026).",
+    )
+
+    assert select_profile(neurips).name == "neurips"
+    assert select_profile(FRONTIERS_FACTS).name == "frontiers"
 
 
 def test_producer_and_creator_criteria_count(data: dict[str, Any]) -> None:

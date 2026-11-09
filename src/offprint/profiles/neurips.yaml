@@ -1,0 +1,95 @@
+# The NeurIPS / NIPS style: one column, Times (Nimbus Roman) with Computer Modern maths.
+# Tuned on tests/fixtures/neurips-2026-2611.09197.
+name: neurips
+match:
+  fonts: [NimbusRomNo9L-Regu, NimbusRomNo9L-Medi]
+  text: ['Conference on Neural Information Processing Systems']
+page:
+  header_y: 60
+  footer_y: 724
+  full: [108, 504]
+fonts:
+  bold: [Medi, CMBX, CMMIB]
+  italic: [Ital, CMMI]
+roles:
+  - {role: ignore, pages: first, text: '^Abstract$'}
+  - {role: small, pages: first, size: [8.5, 9.5], text: '^[∗†‡]'}
+  - {role: title, pages: first, fonts: [NimbusRomNo9L-Medi], size: [16, 30]}
+  - {role: h1, fonts: [NimbusRomNo9L-Medi], size: [11.5, 13]}
+  - {role: h3, fonts: [NimbusRomNo9L-Medi], size: [9.5, 10.5], text: '^(?:\d+|[A-Z])\.\d+\.\d+\s'}
+  - {role: h2, fonts: [NimbusRomNo9L-Medi], size: [9.5, 10.5], text: '^(?:\d+|[A-Z])\.\d+\s'}
+  - {role: authors, pages: first, fonts: [NimbusRomNo9L-Medi], size: [9.5, 10.5]}
+  - {role: affiliation, pages: first, size: [9.5, 10.5], text: '@'}
+  - {role: abstract, pages: first, fonts: [NimbusRomNo9L-Regu], size: [9.5, 10.5]}
+  - {role: small, size: [0, 8]}
+  - {role: body}
+  - {role: caption, context: caption, pages: all, text: '^(Figure|Table)\s+\d+:'}
+  - {role: table_header, context: table, fonts: [NimbusRomNo9L-Medi]}
+  - {role: table_body, context: table}
+headings:
+  # Appendices are numbered with a letter, as in "B.1 Environment".
+  number: '^(?P<number>(?:\d+|[A-Z])(?:\.\d+)*)\s+(?P<text>.*)$'
+  levels: [h1, h2, h3]
+captions:
+  figure: '^Figure\s+(?P<number>\d+):\s*(?P<text>.*)$'
+  table: '^Table\s+(?P<number>\d+):\s*(?P<text>.*)$'
+  figure_side: below
+  table_side: above
+  continuation: '^\(Continued\)'
+  fonts: [Nimbus, CM]
+  touch_gap: 2
+  # A superscript's centre sits 2.5 to 3 points above its line's: it must still join the line.
+  line_tolerance: 4
+figures:
+  zoom: 4
+  bounding_fonts: [NimbusRomNo9L-Medi]
+  min_graphic_size: 3
+  crop_margin: 2
+  full_width_overlap: 10
+  edge_tolerance: 1
+  block_gap: 3
+  caption_reach: 230
+  fallback_top_margin: 4
+  fallback_bottom_margin: 2
+  labels: {gap: 4, max_words: 6}
+tables:
+  text_fonts: [NimbusRomNo9L-Regu]
+  text_min_size: 9
+  text_min_lines: 3
+  swallow_overlap: 0.6
+  keep_margin: 5
+  line_tolerance: 2.5
+  word_gap: 1
+  caption_tolerance: 30
+  reference_headers: []
+  year_pattern: '\d{4}[a-z]?\)?\s*$'
+equations:
+  zoom: 5
+  grayscale: true
+  # Inline maths shares these fonts, so a block is display maths only if mostly set in them.
+  math_fonts: [CMMI, CMSY, CMEX, CMR]
+  math_font_share: 0.6
+  number: '^\((?P<number>\d{1,2})\)$'
+  trailing_number: '\((?P<number>\d{1,2})\)\s*$'
+  right_edge_tolerance: 4
+  max_numbered_lines: 5
+  max_centred_lines: 3
+  centred_indent: 40
+  centred_min_size: 6.5
+  merge_gap: 8
+  crop_margin: 3
+text:
+  paragraph_end: '[.:?!]\)?”?$|\.\)$'
+  loose_join_roles: [body, small]
+  bullet: '^•\s*'
+  word_gap: 1
+  line_end_hyphens: vocabulary
+  scripts: {size_ratio: 0.88, offset: 0.7}
+metadata:
+  author_markers: '∗†‡'
+  email: '\S+@\S+\.\S+'
+  arxiv_id: 'arXiv:(?P<arxiv_id>\d{4}\.\d{4,5})'
+  venue: '(?P<venue>\d+\w{2} Conference on Neural Information Processing Systems \((?:NeurIPS|NIPS) \d{4}\))'
+references:
+  heading: '^References$'
+  doi: '(?:doi:\s*|doi\.org/)(?P<doi>10\.\d{4,9}/\S+?)\.?(?:\s|$)'
