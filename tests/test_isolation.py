@@ -1,4 +1,4 @@
-"""The suite never reads the real `~/.cache/offprint` or `~/.config/offprint` (tests/conftest.py)."""
+"""The suite never reads the real `~/.cache/offprint` or `~/.config/offprint` (conftest.py)."""
 
 import os
 from pathlib import Path

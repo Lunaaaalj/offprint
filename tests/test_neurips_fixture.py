@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+from recorded_cache import recorded_meta, store
 
 from offprint.adapters.pdf import convert_pdf
 from offprint.cleanup import plain_text
@@ -18,15 +19,16 @@ OPEN_FINDINGS = {
     # The booktabs tables have few ruled lines, so detection splits and drops rows (#36, #37).
     "table.empty_header",
     "pdf.dropped_text",
-    # An arXiv PDF carries no license text, and `convert` makes no network calls.
-    "meta.required",
 }
 
 
 @pytest.fixture(scope="module")
 def golden(tmp_path_factory: pytest.TempPathFactory):
+    # The PDF prints no license. arXiv lists CC BY 4.0, which `offprint resolve` caches (#60).
     outdir = tmp_path_factory.mktemp("neurips")
-    return outdir, convert_to_epub(str(PDF), outdir, cover=False)
+    cache_dir = tmp_path_factory.mktemp("neurips-cache")
+    store(cache_dir, recorded_meta())
+    return outdir, convert_to_epub(str(PDF), outdir, cover=False, cache_dir=cache_dir)
 
 
 @pytest.fixture(scope="module")

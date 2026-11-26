@@ -1,33 +1,31 @@
 """A local PDF of an arXiv paper takes the licence `offprint resolve` cached for it (#60).
 
 `convert` makes no network calls: it only reads the cache. The NeurIPS fixture is arXiv
-2611.09197, CC BY 4.0 on arXiv, and its PDF prints no licence.
+2611.09197, CC BY 4.0 on arXiv, and its PDF prints no licence: tests/test_neurips_fixture.py
+converts it with the cache these tests seed, and expects `meta.required` to pass.
 """
 
-import json
 import socket
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from recorded_cache import NEURIPS, recorded_meta, store
 
 from offprint import pipeline
 from offprint.adapters.pdf import PdfResult
 from offprint.ir import Author, Document, Heading, License, Meta, Provenance, Text
 from offprint.pipeline import ConvertError, cached_arxiv_meta, convert_to_epub
-from offprint.sources import ArxivId, CacheError, Resolution, arxiv, cache
+from offprint.sources import ArxivId, CacheError, cache
 
 FIXTURES = Path(__file__).parent / "fixtures"
-NEURIPS_PDF = FIXTURES / "neurips-2026-2611.09197" / "paper.pdf"
 OTHER_PDF = FIXTURES / "frontiers-frai-2026-1748985" / "paper.pdf"
-RECORDING = Path(__file__).parent / "recordings" / "arxiv-neurips-metadata"
-NEURIPS = ArxivId("2611.09197")
 CC_BY = License(spdx="CC-BY-4.0")
 
 
 @pytest.fixture(autouse=True)
 def offline(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """No sockets, and no real cache or config: the configured cache is an empty temp dir."""
+    """No sockets, and the configured cache is an empty temp dir."""
 
     def refuse(*_: object, **__: object) -> None:
         raise AssertionError("convert tried to use the network")
@@ -36,21 +34,6 @@ def offline(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(socket, "getaddrinfo", refuse)
     monkeypatch.setenv("OFFPRINT_CACHE_DIR", str(tmp_path / "configured-cache"))
     monkeypatch.setenv("OFFPRINT_CONFIG_FILE", str(tmp_path / "no-such-config.toml"))
-
-
-def recorded_meta() -> Meta:
-    """arXiv's real record of the fixture, with the licence from its OAI-PMH response."""
-    recording = json.loads((RECORDING / "exchanges.json").read_text(encoding="utf-8"))
-    bodies = {item["url"]: RECORDING / item["body"] for item in recording["exchanges"]}
-    [record] = arxiv.parse_feed(bodies[arxiv.query_url(NEURIPS)].read_bytes())
-    license_ = arxiv.parse_oai_license(bodies[arxiv.oai_url(NEURIPS)].read_bytes())
-    return replace(record.meta, license=license_, source_tier="latex")
-
-
-def store(cache_dir: Path, meta: Meta | None, target: ArxivId = NEURIPS) -> None:
-    """A cache entry as `resolve` leaves it. Its source file doesn't matter to a local convert."""
-    resolution = Resolution(input=str(target), attempts=(), meta=meta, tier="pdf")
-    cache.store(cache_dir, target, resolution, "source.pdf", b"%PDF-1.7 placeholder")
 
 
 def tiny(arxiv_id: str | None) -> Document:
@@ -190,18 +173,3 @@ def test_a_paper_without_an_arxiv_id_never_reads_the_cache(
     conversion = convert_tiny(monkeypatch, tiny(None), tmp_path, tmp_path / "cache")
 
     assert meta_required(conversion)[1] == ["the paper has no license"]
-
-
-# The NeurIPS fixture end to end
-
-
-def test_the_neurips_pdf_passes_meta_required_with_its_resolved_entry(tmp_path: Path) -> None:
-    store(tmp_path / "cache", recorded_meta())
-
-    conversion = convert_to_epub(
-        str(NEURIPS_PDF), tmp_path, cover=False, cache_dir=tmp_path / "cache"
-    )
-
-    assert meta_required(conversion) == ("pass", [])
-    failed = {result.id for result in conversion.report.checks if result.status == "fail"}
-    assert "meta.required" not in failed
