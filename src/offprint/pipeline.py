@@ -1,7 +1,7 @@
 """The conversion pipeline: from an INPUT to a finished EPUB, without touching the network.
 
-input → `cached_source` → adapter → `typeset_math` → `validate` → `generate_cover` → `render_epub`
-→ `run_gate`
+input → `cached_source` → adapter → cached registry metadata → `typeset_math` → `validate`
+→ `generate_cover` → `render_epub` → `run_gate`
 
 Every failure the user can act on becomes a `ConvertError`, with a message for the terminal, and
 writes nothing. A book that reaches the gate is written with its report, whatever the verdict.
@@ -31,6 +31,8 @@ from offprint.profiles import Profile, ProfileError, load_profile_file
 from offprint.qa import QaReport, run_gate, write_report
 from offprint.render.epub import EpubRenderError, render_epub
 from offprint.sources import (
+    ArxivId,
+    InputError,
     LocalFile,
     Resolution,
     SourceError,
@@ -38,7 +40,9 @@ from offprint.sources import (
     cached_source,
     detect_input,
     identifier_slug,
+    load_config,
 )
+from offprint.sources import cache as source_cache
 
 _MISSING_ADAPTERS: dict[SourceTier, str] = {
     "latex": "the best source for {input} is LaTeX, but that adapter doesn't exist yet (#11)",
@@ -60,12 +64,20 @@ class Conversion:
 
 
 def convert_to_epub(
-    source: str, outdir: Path, *, cover: bool = True, profile: Path | None = None
+    source: str,
+    outdir: Path,
+    *,
+    cover: bool = True,
+    profile: Path | None = None,
+    cache_dir: Path | None = None,
 ) -> Conversion:
-    """Convert `source`, a local file or a cached identifier, to `outdir/<name>.epub`."""
+    """Convert `source`, a local file or a cached identifier, to `outdir/<name>.epub`.
+
+    `cache_dir` is the resolver's cache, by default the configured one. It is only read.
+    """
     try:
         target = detect_input(source)
-        resolution = cached_source(source)
+        resolution = cached_source(source, cache_dir=cache_dir)
     except SourceError as error:
         raise ConvertError(str(error)) from error
 
@@ -77,7 +89,13 @@ def convert_to_epub(
         raise ConvertError(str(error)) from error
 
     doc, adapter_problems = _read_document(resolution, selected_profile)
-    doc = replace(doc, meta=combine_meta(doc.meta, resolution.meta))
+    resolved = resolution.meta
+    if resolved is None and isinstance(target, LocalFile):
+        try:
+            resolved = cached_arxiv_meta(doc.meta.arxiv_id, _cache_root(cache_dir))
+        except SourceError as error:
+            raise ConvertError(str(error)) from error
+    doc = replace(doc, meta=combine_meta(doc.meta, resolved))
     typeset = typeset_math(doc)
     doc = typeset.doc
     if problems := validate(doc):
@@ -147,11 +165,33 @@ def combine_meta(extracted: Meta, resolved: Meta | None) -> Meta:
     )
 
 
+def cached_arxiv_meta(arxiv_id: str | None, cache_dir: Path) -> Meta | None:
+    """What `offprint resolve` recorded for the arXiv id a local file prints. Never the network.
+
+    A PDF of an arXiv paper often prints no licence, but arXiv's record has one. `None` if the
+    paper has no arXiv id or it hasn't been resolved. Raises `CacheError` for a damaged entry.
+    """
+    if not arxiv_id:
+        return None
+    try:
+        target = detect_input(f"arxiv:{arxiv_id}")
+    except InputError:
+        return None
+    if not isinstance(target, ArxivId):
+        return None
+    entry = source_cache.load(cache_dir, target)
+    return entry.meta if entry is not None else None
+
+
 def output_stem(target: SourceInput) -> str:
     """The EPUB's file name, without the extension. Pure."""
     if isinstance(target, LocalFile):
         return target.path.stem
     return identifier_slug(target)
+
+
+def _cache_root(cache_dir: Path | None) -> Path:
+    return cache_dir if cache_dir is not None else load_config().cache_dir
 
 
 def _read_document(

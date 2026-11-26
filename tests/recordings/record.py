@@ -2,6 +2,9 @@
 
     uv run python tests/recordings/record.py [SCENARIO ...]
 
+A scenario in `SCENARIOS` is a whole `resolve` run. One in `METADATA` is only the arXiv metadata
+requests (the API and OAI-PMH), for a paper whose source the tests never download.
+
 The requests carry only the placeholder contact address. Only allow-listed response headers are
 kept, and any other email address in a body (corresponding authors, in papers) is replaced. That
 is the one change made to the responses, and each scenario's `exchanges.json` says so.
@@ -20,7 +23,7 @@ from typing import Any
 
 import httpx
 
-from offprint.sources import Config, resolve, sniff
+from offprint.sources import ArxivId, Config, arxiv, resolve, sniff
 from offprint.sources.http import Http
 
 PLACEHOLDER_CONTACT = "offprint-tests@example.com"
@@ -39,6 +42,10 @@ SCENARIOS = {
     # Well-formed identifiers that don't exist.
     "arxiv-missing": "2601.99999",
     "doi-missing": "10.3389/frai.2026.0000000",
+}
+METADATA = {
+    # The NeurIPS fixture: CC BY 4.0 on arXiv, but its PDF prints no licence (#60).
+    "arxiv-neurips-metadata": "2611.09197",
 }
 _EMAIL = re.compile(rb"[\w.+-]+\\?@[\w-]+\.[\w.-]*\w")
 
@@ -108,20 +115,24 @@ def record(name: str) -> None:
         tempfile.TemporaryDirectory() as cache,
         Http(PLACEHOLDER_CONTACT, transport=recorder) as http,
     ):
-        config = Config(cache_dir=Path(cache), contact=PLACEHOLDER_CONTACT)
-        result = resolve(SCENARIOS[name], config=config, http=http)
+        if name in METADATA:
+            arxiv_id = ArxivId(METADATA[name])
+            outcome = (arxiv.lookup(arxiv_id, http).arxiv_id, arxiv.lookup_license(arxiv_id, http))
+        else:
+            config = Config(cache_dir=Path(cache), contact=PLACEHOLDER_CONTACT)
+            outcome = resolve(SCENARIOS[name], config=config, http=http).tier
     payload = {
         "synthetic": False,
         "recorded": date.today().isoformat(),
-        "input": SCENARIOS[name],
+        "input": METADATA.get(name) or SCENARIOS[name],
         "notes": "Real responses. Email addresses in bodies are replaced; nothing else changed.",
         "exchanges": recorder.exchanges,
     }
     text = json.dumps(payload, indent=2) + "\n"
     (directory / "exchanges.json").write_text(text, encoding="utf-8")
-    print(name, result.tier, [(e["status"], e["url"]) for e in recorder.exchanges])
+    print(name, outcome, [(e["status"], e["url"]) for e in recorder.exchanges])
 
 
 if __name__ == "__main__":
-    for scenario in sys.argv[1:] or SCENARIOS:
+    for scenario in sys.argv[1:] or [*SCENARIOS, *METADATA]:
         record(scenario)

@@ -2,7 +2,7 @@
   "synthetic": false,
   "recorded": "2026-11-04",
   "input": "10.1007/s00022-025-00782-5",
-  "notes": "Real responses. Email addresses in bodies are replaced; nothing else changed.",
+  "notes": "Real responses. Email addresses in bodies are replaced; nothing else changed. The arXiv OAI-PMH exchange (06.body) was recorded on 2026-11-26 and appended, when the resolver started asking arXiv for the licence (#60).",
   "exchanges": [
     {
       "method": "GET",
@@ -58,6 +58,15 @@
         "content-type": "application/gzip"
       },
       "body": "05.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://oaipmh.arxiv.org/oai?verb=GetRecord&identifier=oai:arXiv.org:2509.10460&metadataPrefix=arXiv",
+      "status": 200,
+      "headers": {
+        "content-type": "text/xml"
+      },
+      "body": "06.body"
     }
   ]
 }

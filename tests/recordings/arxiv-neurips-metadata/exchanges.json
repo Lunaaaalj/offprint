@@ -1,0 +1,26 @@
+{
+  "synthetic": false,
+  "recorded": "2026-11-26",
+  "input": "2611.09197",
+  "notes": "Real responses. Email addresses in bodies are replaced; nothing else changed.",
+  "exchanges": [
+    {
+      "method": "GET",
+      "url": "https://export.arxiv.org/api/query?id_list=2611.09197",
+      "status": 200,
+      "headers": {
+        "content-type": "application/atom+xml; charset=utf-8"
+      },
+      "body": "00.body"
+    },
+    {
+      "method": "GET",
+      "url": "https://oaipmh.arxiv.org/oai?verb=GetRecord&identifier=oai:arXiv.org:2611.09197&metadataPrefix=arXiv",
+      "status": 200,
+      "headers": {
+        "content-type": "text/xml"
+      },
+      "body": "01.body"
+    }
+  ]
+}

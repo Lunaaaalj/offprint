@@ -32,7 +32,7 @@ Ids are stable. Each check has a severity, `error` or `warn`, and a hint for fix
 | `figure.foreign_caption` | error | A figure's box holds no other figure's or table's caption. |
 | `xhtml.wellformed` | error | Every XHTML file in the book parses, and every file in the spine is there. |
 | `epubcheck` | error (`warn` for its warnings) | The book passes `epubcheck`. Skipped when it isn't installed. |
-| `meta.required` | error | The paper has a title, at least one author and a license. |
+| `meta.required` | error | The paper has a title, at least one author and a license. A local file with an arXiv id takes what `offprint resolve arXiv:<id>` cached, so a missing license names that command; with only a DOI, it names converting the resolved DOI instead. |
 | `meta.author_name` | error | No author's name holds an email address, a footnote mark or a digit. |
 | `block.duplicate_id`, `provenance.*`, `asset.*`, `figure.duplicate_number`, `table.duplicate_number`, `equation.empty`, `heading.*` | error | The rest of `offprint.ir.validate`, under its own codes (see [ir.md](ir.md)). |
 | `epub.invalid_xml_chars`, `epub.equation_text_fallback`, `epub.inline_math_text_fallback`, `epub.link_dropped`, `epub.asset_converted` | warn | What the renderer had to change, under its own codes. |
