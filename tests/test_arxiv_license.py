@@ -155,6 +155,21 @@ def test_the_configured_cache_is_the_default(
     assert meta_required(conversion) == ("pass", [])
 
 
+def test_a_bad_contact_address_doesnt_stop_a_local_convert(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # Only the resolver sends the contact address. Converting a file needs just the cache path.
+    monkeypatch.setenv("OFFPRINT_CONTACT_EMAIL", "not an address")
+    store(tmp_path / "configured-cache", recorded_meta())
+    monkeypatch.setattr(pipeline, "read_pdf", lambda _, **kwargs: PdfResult(tiny("2611.09197"), ()))
+    monkeypatch.setattr(pipeline, "read_evidence", lambda *_, **kwargs: None)
+
+    conversion = convert_to_epub(str(OTHER_PDF), tmp_path, cover=False)
+
+    assert conversion.path.is_file()
+    assert meta_required(conversion) == ("pass", [])
+
+
 def test_a_damaged_entry_stops_the_book(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     store(tmp_path / "cache", recorded_meta())
     (cache.entry_dir(tmp_path / "cache", NEURIPS) / "source.pdf").write_bytes(b"changed")

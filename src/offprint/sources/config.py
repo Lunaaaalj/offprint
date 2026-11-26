@@ -30,12 +30,19 @@ def load_config(env: Mapping[str, str] | None = None) -> Config:
     env = os.environ if env is None else env
     home = Path(env.get("HOME") or Path.home())
     path = Path(env.get("OFFPRINT_CONFIG_FILE") or home / ".config" / "offprint" / "config.toml")
-    cache_dir = Path(env.get("OFFPRINT_CACHE_DIR") or home / ".cache" / "offprint")
+    cache_dir = cache_dir_from_env(env)
 
     contact = env.get("OFFPRINT_CONTACT_EMAIL") or _read_file_contact(path)
     if contact is not None and not _EMAIL.fullmatch(contact):
         raise ConfigError(f"the contact address {contact!r} isn't an email address")
     return Config(cache_dir=cache_dir, contact=contact)
+
+
+def cache_dir_from_env(env: Mapping[str, str] | None = None) -> Path:
+    """Where the cache is. Reads no file, so a bad contact address can't get in the way."""
+    env = os.environ if env is None else env
+    home = Path(env.get("HOME") or Path.home())
+    return Path(env.get("OFFPRINT_CACHE_DIR") or home / ".cache" / "offprint")
 
 
 def _read_file_contact(path: Path) -> str | None:

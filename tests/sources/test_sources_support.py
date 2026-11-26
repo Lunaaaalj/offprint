@@ -15,6 +15,7 @@ from replay_support import CONTACT, client
 from offprint.sources import CacheError, ConfigError, Doi, FetchError, load_config
 from offprint.sources import cache as cache_module
 from offprint.sources.cache import entry_dir, entry_key
+from offprint.sources.config import cache_dir_from_env
 from offprint.sources.http import PROJECT_URL, RateLimiter, user_agent
 from offprint.sources.sniff import classify_eprint, is_jats, is_pdf
 
@@ -40,6 +41,13 @@ def test_the_cache_defaults_to_the_home_directory_and_can_move() -> None:
     assert load_config({"HOME": "/h"}).cache_dir == Path("/h/.cache/offprint")
     env = {"HOME": "/h", "OFFPRINT_CACHE_DIR": "/elsewhere"}
     assert load_config(env).cache_dir == Path("/elsewhere")
+
+
+def test_the_cache_dir_needs_no_valid_contact() -> None:
+    env = {"HOME": "/h", "OFFPRINT_CONTACT_EMAIL": "nobody"}
+
+    assert cache_dir_from_env(env) == Path("/h/.cache/offprint")
+    assert cache_dir_from_env({**env, "OFFPRINT_CACHE_DIR": "/elsewhere"}) == Path("/elsewhere")
 
 
 @pytest.mark.parametrize("bad", ["nobody", "a@b", "a b@example.com", "x@example.com\r\nEvil: 1"])

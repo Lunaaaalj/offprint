@@ -40,9 +40,9 @@ from offprint.sources import (
     cached_source,
     detect_input,
     identifier_slug,
-    load_config,
 )
 from offprint.sources import cache as source_cache
+from offprint.sources.config import cache_dir_from_env
 
 _MISSING_ADAPTERS: dict[SourceTier, str] = {
     "latex": "the best source for {input} is LaTeX, but that adapter doesn't exist yet (#11)",
@@ -77,7 +77,7 @@ def convert_to_epub(
     """
     try:
         target = detect_input(source)
-        resolution = cached_source(source, cache_dir=cache_dir)
+        resolution = cached_source(source, cache_dir=_cache_root(cache_dir))
     except SourceError as error:
         raise ConvertError(str(error)) from error
 
@@ -191,7 +191,7 @@ def output_stem(target: SourceInput) -> str:
 
 
 def _cache_root(cache_dir: Path | None) -> Path:
-    return cache_dir if cache_dir is not None else load_config().cache_dir
+    return cache_dir if cache_dir is not None else cache_dir_from_env()
 
 
 def _read_document(
