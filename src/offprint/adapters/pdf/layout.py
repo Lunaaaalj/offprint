@@ -48,17 +48,34 @@ def column_range(column: Column, layout: PageLayout) -> Range:
 
 
 def reading_order[T: Placed](elements: Sequence[T]) -> list[T]:
-    """Order a page's elements: full-width ones cut it into bands, read left column then right."""
+    """Order a page's elements: full-width ones cut it into bands, read left column then right.
+
+    Full-width elements, sorted by top, are separators. A narrow element goes after
+    every separator it is below and before the rest; within a band the left column
+    is read before the right, each top to bottom. An element is below a separator
+    when its vertical middle is at or past the separator's bottom, or when the
+    middle falls inside the separator's span and is closer to its bottom than to
+    its top (ties go before). Every element therefore lands in exactly one band.
+    """
     wide = sorted((e for e in elements if e.column == "full"), key=lambda e: e.top)
-    narrow = [e for e in elements if e.column != "full"]
+    bands: list[list[T]] = [[] for _ in range(len(wide) + 1)]
+    for element in elements:
+        if element.column != "full":
+            middle = (element.top + element.bottom) / 2
+            bands[sum(_is_below(middle, separator) for separator in wide)].append(element)
     ordered: list[T] = []
-    start = float("-inf")
-    for separator in [*wide, None]:
-        end = separator.top if separator is not None else float("inf")
-        band = [e for e in narrow if start <= (e.top + e.bottom) / 2 < end]
+    for band, separator in zip(bands, [*wide, None], strict=True):
         ordered += sorted((e for e in band if e.column == "left"), key=lambda e: e.top)
         ordered += sorted((e for e in band if e.column == "right"), key=lambda e: e.top)
         if separator is not None:
             ordered.append(separator)
-            start = separator.bottom
     return ordered
+
+
+def _is_below(middle: float, separator: Placed) -> bool:
+    """Whether a narrow element with this vertical middle is read after the separator."""
+    if middle >= separator.bottom:
+        return True
+    if middle < separator.top:
+        return False
+    return middle - separator.top > separator.bottom - middle
