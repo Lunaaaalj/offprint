@@ -86,7 +86,7 @@ def merge_meta(published: Meta | None, preprint: Meta | None) -> Meta | None:
     """Combine Crossref's and arXiv's records. Pure.
 
     Crossref describes the published paper, so it wins. arXiv fills what Crossref lacks, which
-    is usually the abstract.
+    is usually the abstract, and sometimes the licence.
     """
     if published is None or preprint is None:
         return published or preprint
@@ -96,6 +96,7 @@ def merge_meta(published: Meta | None, preprint: Meta | None) -> Meta | None:
         abstract=published.abstract or preprint.abstract,
         authors=published.authors or preprint.authors,
         year=published.year or preprint.year,
+        license=published.license or preprint.license,
     )
 
 
@@ -151,6 +152,13 @@ def _resolve_remote(target: Doi | ArxivId, config: Config, http: Http) -> Resolu
 
     if _outcome(lookups, "arXiv") == "missing":
         arxiv_id = None
+    if record is not None:
+        found = record
+        license_ = ask("arXiv OAI-PMH", lambda: arxiv.lookup_license(found.arxiv_id, http))
+        if license_ is not None:
+            record = dataclasses.replace(
+                record, meta=dataclasses.replace(record.meta, license=license_)
+            )
 
     plan: list[_Candidate | Attempt] = [
         *_latex_tier(target, arxiv_id, lookups),

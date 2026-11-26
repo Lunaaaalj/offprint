@@ -1,7 +1,7 @@
 """Shared test helpers."""
 
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -23,6 +23,29 @@ def fixtures() -> Callable[[str], Path]:
         return path
 
     return find
+
+
+def _isolate(monkeypatch: pytest.MonkeyPatch, root: Path) -> None:
+    monkeypatch.setenv("OFFPRINT_CACHE_DIR", str(root / "cache"))
+    monkeypatch.setenv("OFFPRINT_CONFIG_FILE", str(root / "no-such-config.toml"))
+    monkeypatch.delenv("OFFPRINT_CONTACT_EMAIL", raising=False)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def isolated_session(tmp_path_factory: pytest.TempPathFactory) -> Iterator[None]:
+    """Keep module- and session-scoped fixtures off the real cache and config too.
+
+    They are set up before any function-scoped fixture, so `isolated_test` comes too late for them.
+    """
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        _isolate(monkeypatch, tmp_path_factory.mktemp("offprint-home"))
+        yield
+
+
+@pytest.fixture(autouse=True)
+def isolated_test(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """No test reads or writes the real `~/.cache/offprint` or `~/.config/offprint`."""
+    _isolate(monkeypatch, tmp_path)
 
 
 @pytest.fixture(scope="session")

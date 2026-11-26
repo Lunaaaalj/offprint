@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/7snK1chNcEYxQLuCOEtjIEC+Agg</id>
+  <title>arXiv Query: search_query=&amp;id_list=2611.09197&amp;start=0&amp;max_results=10</title>
+  <updated>2026-11-26T16:11:10Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=&amp;start=0&amp;max_results=10&amp;id_list=2611.09197" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>10</opensearch:itemsPerPage>
+  <opensearch:totalResults>1</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/2611.09197v1</id>
+    <title>Safe Reinforcement Learning via Probabilistic Option Shielding</title>
+    <updated>2026-11-06T09:18:47Z</updated>
+    <link href="https://arxiv.org/abs/2611.09197v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2611.09197v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Shielding is a safe reinforcement learning technique that provides safety guarantees while learning, by blocking unsafe actions. Traditional shielding relies on a complete model of the environment to provide long-term guarantees. Probabilistic logic shielding (PLS) lifts the requirement of having such model, but only considers safety in the short term, typically looking only one or few steps ahead. We propose Probabilistic Option Shielding (POS), which extends PLS to the option level, recovering long-horizon safety without reintroducing the need for a complete environment model. POS learns a model-free critic directly from one-step PLS signals, to estimate the probability that an entire option will complete safely under uncertainty. We evaluate POS on safe navigation tasks in the LogiCity environment, and show that it achieves considerably safer training while matching the task performance of standard step-level PLS and other safety related reinforcement learning baselines.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-11-06T09:18:47Z</published>
+    <arxiv:comment>Accepted at the NEmo workshop @ NeurIPS 2026</arxiv:comment>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Gian Luca Ascari</name>
+    </author>
+    <author>
+      <name>Isidoro Tamassia</name>
+    </author>
+    <author>
+      <name>Ying Jiao</name>
+    </author>
+    <author>
+      <name>Luc De Raedt</name>
+    </author>
+    <author>
+      <name>Giuseppe Marra</name>
+    </author>
+  </entry>
+</feed>

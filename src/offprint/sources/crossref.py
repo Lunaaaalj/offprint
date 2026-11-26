@@ -10,10 +10,10 @@ from offprint.ir import Author, License, Meta, Text
 from offprint.sources.errors import InputError
 from offprint.sources.http import Http
 from offprint.sources.identify import ArxivId, Doi, detect_input
+from offprint.sources.licenses import spdx_from_url
 
 _WORKS_URL = "https://api.crossref.org/works/"
 _TAG = re.compile(r"<[^>]+>")
-_CC_URL = re.compile(r"creativecommons\.org/(licenses|publicdomain)/([a-z-]+)/(\d\.\d)", re.I)
 _XML_TYPES = frozenset({"application/xml", "text/xml", "application/jats+xml"})
 
 
@@ -54,17 +54,6 @@ def parse_work(payload: dict[str, Any]) -> CrossrefWork:
         arxiv_id=_preprint(work.get("relation", {})),
         open_xml_url=_xml_link(work.get("link", [])) if license_ else None,
     )
-
-
-def spdx_from_url(url: str) -> str | None:
-    """`https://creativecommons.org/licenses/by/4.0/` becomes `CC-BY-4.0`. Pure."""
-    match = _CC_URL.search(url)
-    if match is None:
-        return None
-    family, code, version = match.groups()
-    if family.lower() == "publicdomain":
-        return f"CC0-{version}" if code.lower() == "zero" else None
-    return f"CC-{code.upper()}-{version}"
 
 
 def _license(licenses: list[dict[str, Any]]) -> License | None:

@@ -204,9 +204,25 @@ def meta_required(doc: Document) -> Outcome:
         )
         if not present
     ]
+    # `convert` reads the cache, never the network: say what can still find the licence.
+    no_license = "the paper has no license"
+    if meta.arxiv_id:
+        no_license += (
+            f": run `offprint resolve arXiv:{meta.arxiv_id} --refresh`, then convert again. If "
+            "it's still missing, arXiv lists no open license for it"
+        )
+    elif meta.doi:
+        no_license += (
+            f": run `offprint resolve {meta.doi}`, then convert `{meta.doi}` instead of a file. "
+            "If that's what was converted, the registries list no open license for it"
+        )
     return Outcome(
         findings=tuple(
-            finding("meta.required", f"the paper has no {name}", location=FRONT_MATTER_LOCATION)
+            finding(
+                "meta.required",
+                no_license if name == "license" else f"the paper has no {name}",
+                location=FRONT_MATTER_LOCATION,
+            )
             for name in missing
         )
     )
