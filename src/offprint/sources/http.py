@@ -24,6 +24,7 @@ _DEFAULT_INTERVAL = 1.0
 _HOST_INTERVALS = {
     "export.arxiv.org": 3.0,  # arXiv API terms: one request every three seconds.
     "arxiv.org": 3.0,
+    "oaipmh.arxiv.org": 3.0,  # arXiv's terms cover OAI-PMH too: one request every three seconds.
     "api.crossref.org": 0.2,
     "pmc-oa-opendata.s3.amazonaws.com": 0.1,  # A static bucket: a paper can have dozens of figures.
 }

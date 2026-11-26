@@ -109,11 +109,12 @@ def test_rate_limiter_spaces_requests_per_host() -> None:
     assert time.now == 13
 
 
-def test_arxiv_gets_three_seconds_between_requests() -> None:
+@pytest.mark.parametrize("host", ["export.arxiv.org", "oaipmh.arxiv.org"])
+def test_arxiv_gets_three_seconds_between_requests(host: str) -> None:
     time = FakeTime()
     limiter = RateLimiter(clock=time.clock, sleep=time.sleep)
-    limiter.wait("export.arxiv.org")
-    limiter.wait("export.arxiv.org")
+    limiter.wait(host)
+    limiter.wait(host)
     assert time.now == 3
 
 
